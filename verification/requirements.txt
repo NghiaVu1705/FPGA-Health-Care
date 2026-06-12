@@ -1,0 +1,5 @@
+cocotb==2.0.1
+pyuvm==4.0.1
+pytest==8.0.0
+numpy>=1.24.0
+scipy>=1.10.0

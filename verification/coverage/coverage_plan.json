@@ -1,0 +1,810 @@
+{
+  "version": 1,
+  "definition": "100% means every listed functional bin is hit at least once. Gowin/vendor IP is measured through boundary/interface bins only.",
+  "bins": [
+    {
+      "id": "threshold.spo2_normal",
+      "dut": "threshold_proc",
+      "description": "SpO2 normal boundary and interior",
+      "owner": "tests.unit.test_threshold_proc"
+    },
+    {
+      "id": "threshold.spo2_abnormal",
+      "dut": "threshold_proc",
+      "description": "SpO2 abnormal boundary and interior",
+      "owner": "tests.unit.test_threshold_proc"
+    },
+    {
+      "id": "threshold.spo2_critical",
+      "dut": "threshold_proc",
+      "description": "SpO2 critical boundary and interior",
+      "owner": "tests.unit.test_threshold_proc"
+    },
+    {
+      "id": "threshold.temp_normal",
+      "dut": "threshold_proc",
+      "description": "Temperature normal range",
+      "owner": "tests.unit.test_threshold_proc"
+    },
+    {
+      "id": "threshold.temp_abnormal_low",
+      "dut": "threshold_proc",
+      "description": "Temperature abnormal low range",
+      "owner": "tests.unit.test_threshold_proc"
+    },
+    {
+      "id": "threshold.temp_abnormal_high",
+      "dut": "threshold_proc",
+      "description": "Temperature abnormal high range",
+      "owner": "tests.unit.test_threshold_proc"
+    },
+    {
+      "id": "threshold.temp_critical_low",
+      "dut": "threshold_proc",
+      "description": "Temperature critical low range",
+      "owner": "tests.unit.test_threshold_proc"
+    },
+    {
+      "id": "threshold.temp_critical_high",
+      "dut": "threshold_proc",
+      "description": "Temperature critical high range",
+      "owner": "tests.unit.test_threshold_proc"
+    },
+    {
+      "id": "threshold.random_constrained",
+      "dut": "threshold_proc",
+      "description": "Constrained random threshold samples",
+      "owner": "tests.unit.test_threshold_proc"
+    },
+    {
+      "id": "decision.class_0",
+      "dut": "decision_layer",
+      "description": "Normal output class",
+      "owner": "tests.unit.test_decision_layer"
+    },
+    {
+      "id": "decision.class_1",
+      "dut": "decision_layer",
+      "description": "Abnormal output class",
+      "owner": "tests.unit.test_decision_layer"
+    },
+    {
+      "id": "decision.class_2",
+      "dut": "decision_layer",
+      "description": "Critical output class",
+      "owner": "tests.unit.test_decision_layer"
+    },
+    {
+      "id": "decision.class_3_fail_safe",
+      "dut": "decision_layer",
+      "description": "Invalid 2'b11 input is fail-safe critical",
+      "owner": "tests.unit.test_decision_layer"
+    },
+    {
+      "id": "decision.tie_break_high_severity",
+      "dut": "decision_layer",
+      "description": "Tie-break selects higher severity",
+      "owner": "tests.unit.test_decision_layer"
+    },
+    {
+      "id": "decision.sliding_window",
+      "dut": "decision_layer",
+      "description": "Five-sample sliding window updates class",
+      "owner": "tests.unit.test_decision_layer"
+    },
+    {
+      "id": "decision.conf_low",
+      "dut": "decision_layer",
+      "description": "Low confidence count",
+      "owner": "tests.unit.test_decision_layer"
+    },
+    {
+      "id": "decision.conf_medium",
+      "dut": "decision_layer",
+      "description": "Medium confidence count",
+      "owner": "tests.unit.test_decision_layer"
+    },
+    {
+      "id": "decision.conf_high",
+      "dut": "decision_layer",
+      "description": "High confidence count",
+      "owner": "tests.unit.test_decision_layer"
+    },
+    {
+      "id": "decision.trigger_eeg",
+      "dut": "decision_layer",
+      "description": "EEG trigger bit",
+      "owner": "tests.unit.test_decision_layer"
+    },
+    {
+      "id": "decision.trigger_ecg",
+      "dut": "decision_layer",
+      "description": "ECG trigger bit",
+      "owner": "tests.unit.test_decision_layer"
+    },
+    {
+      "id": "decision.trigger_emg",
+      "dut": "decision_layer",
+      "description": "EMG trigger bit",
+      "owner": "tests.unit.test_decision_layer"
+    },
+    {
+      "id": "decision.trigger_spo2",
+      "dut": "decision_layer",
+      "description": "SpO2 trigger bit",
+      "owner": "tests.unit.test_decision_layer"
+    },
+    {
+      "id": "decision.trigger_temp",
+      "dut": "decision_layer",
+      "description": "Temperature trigger bit",
+      "owner": "tests.unit.test_decision_layer"
+    },
+    {
+      "id": "stft.zero_input",
+      "dut": "stft_top",
+      "description": "Zero input frame behavior",
+      "owner": "tests.subsystem.test_stft_top"
+    },
+    {
+      "id": "stft.sine_bin",
+      "dut": "stft_top",
+      "description": "Sine wave peak bin",
+      "owner": "tests.subsystem.test_stft_top"
+    },
+    {
+      "id": "stft.amplitude_sweep",
+      "dut": "stft_top",
+      "description": "Sine amplitude sweep model coverage",
+      "owner": "tests.subsystem.test_stft_top"
+    },
+    {
+      "id": "stft.backpressure",
+      "dut": "stft_top",
+      "description": "spec_ready backpressure boundary",
+      "owner": "tests.subsystem.test_stft_top"
+    },
+    {
+      "id": "stft.reset_mid_frame",
+      "dut": "stft_top",
+      "description": "Reset during input frame",
+      "owner": "tests.subsystem.test_stft_top"
+    },
+    {
+      "id": "stft.timeout_guard",
+      "dut": "stft_top",
+      "description": "Output collection timeout guard",
+      "owner": "tests.subsystem.test_stft_top"
+    },
+    {
+      "id": "stft.mse_golden",
+      "dut": "stft_top",
+      "description": "MSE against scipy STFT golden model",
+      "owner": "tests.subsystem.test_stft_top"
+    },
+    {
+      "id": "cnn.rom_eeg",
+      "dut": "cnn_top",
+      "description": "EEG ROM image load",
+      "owner": "tests.subsystem.test_cnn_top"
+    },
+    {
+      "id": "cnn.rom_ecg",
+      "dut": "cnn_top",
+      "description": "ECG ROM image availability",
+      "owner": "tests.subsystem.test_cnn_top"
+    },
+    {
+      "id": "cnn.rom_emg",
+      "dut": "cnn_top",
+      "description": "EMG ROM image availability",
+      "owner": "tests.subsystem.test_cnn_top"
+    },
+    {
+      "id": "cnn.first_byte_start",
+      "dut": "cnn_top",
+      "description": "First byte spec_start behavior",
+      "owner": "tests.subsystem.test_cnn_top"
+    },
+    {
+      "id": "cnn.valid_gap",
+      "dut": "cnn_top",
+      "description": "Input valid gap tolerance",
+      "owner": "tests.subsystem.test_cnn_top"
+    },
+    {
+      "id": "cnn.numpy_match",
+      "dut": "cnn_top",
+      "description": "RTL class equals numpy Tiny CNN",
+      "owner": "tests.subsystem.test_cnn_top"
+    },
+    {
+      "id": "uart.valid_frame",
+      "dut": "uart_top",
+      "description": "Valid EMG UART frame accepted",
+      "owner": "tests.unit.test_uart_top"
+    },
+    {
+      "id": "uart.bad_checksum",
+      "dut": "uart_top",
+      "description": "Bad checksum frame rejected",
+      "owner": "tests.unit.test_uart_top"
+    },
+    {
+      "id": "uart.resync_garbage",
+      "dut": "uart_top",
+      "description": "Garbage bytes before header are ignored",
+      "owner": "tests.unit.test_uart_top"
+    },
+    {
+      "id": "uart.back_to_back",
+      "dut": "uart_top",
+      "description": "Back-to-back UART frames",
+      "owner": "tests.unit.test_uart_top"
+    },
+    {
+      "id": "uart.debug_ready_busy",
+      "dut": "uart_top",
+      "description": "Debug TX ready/busy handshake",
+      "owner": "tests.unit.test_uart_top"
+    },
+    {
+      "id": "spi.eeg_channel",
+      "dut": "spi_slave",
+      "description": "SPI EEG channel decode",
+      "owner": "tests.unit.test_spi_slave"
+    },
+    {
+      "id": "spi.ecg_channel",
+      "dut": "spi_slave",
+      "description": "SPI ECG channel decode",
+      "owner": "tests.unit.test_spi_slave"
+    },
+    {
+      "id": "spi.adc_min",
+      "dut": "spi_slave",
+      "description": "ADC minimum sample decode",
+      "owner": "tests.unit.test_spi_slave"
+    },
+    {
+      "id": "spi.adc_mid",
+      "dut": "spi_slave",
+      "description": "ADC mid-scale sample decode",
+      "owner": "tests.unit.test_spi_slave"
+    },
+    {
+      "id": "spi.adc_max",
+      "dut": "spi_slave",
+      "description": "ADC maximum sample decode",
+      "owner": "tests.unit.test_spi_slave"
+    },
+    {
+      "id": "spi.cs_abort",
+      "dut": "spi_slave",
+      "description": "CS abort/recovery",
+      "owner": "tests.unit.test_spi_slave"
+    },
+    {
+      "id": "spi.back_to_back",
+      "dut": "spi_slave",
+      "description": "Back-to-back SPI frames",
+      "owner": "tests.unit.test_spi_slave"
+    },
+    {
+      "id": "i2c.reset_defaults",
+      "dut": "i2c_slave",
+      "description": "I2C reset default vitals",
+      "owner": "tests.unit.test_i2c_slave"
+    },
+    {
+      "id": "i2c.write_spo2",
+      "dut": "i2c_slave",
+      "description": "Write SpO2 register 0x00",
+      "owner": "tests.unit.test_i2c_slave"
+    },
+    {
+      "id": "i2c.write_temp",
+      "dut": "i2c_slave",
+      "description": "Write temperature register 0x01",
+      "owner": "tests.unit.test_i2c_slave"
+    },
+    {
+      "id": "i2c.invalid_address",
+      "dut": "i2c_slave",
+      "description": "Invalid I2C address ignored",
+      "owner": "tests.unit.test_i2c_slave"
+    },
+    {
+      "id": "i2c.invalid_register",
+      "dut": "i2c_slave",
+      "description": "Invalid I2C register ignored",
+      "owner": "tests.unit.test_i2c_slave"
+    },
+    {
+      "id": "i2c.repeated_start_stop",
+      "dut": "i2c_slave",
+      "description": "Repeated start/stop recovery",
+      "owner": "tests.unit.test_i2c_slave"
+    },
+    {
+      "id": "display.vga_de",
+      "dut": "vga_timing",
+      "description": "VGA active display enable region",
+      "owner": "tests.unit.test_vga_timing"
+    },
+    {
+      "id": "display.vga_hs_vs",
+      "dut": "vga_timing",
+      "description": "VGA sync pulse behavior",
+      "owner": "tests.unit.test_vga_timing"
+    },
+    {
+      "id": "display.wave_eeg",
+      "dut": "waveform_display",
+      "description": "EEG waveform color region",
+      "owner": "tests.unit.test_waveform_display"
+    },
+    {
+      "id": "display.wave_ecg",
+      "dut": "waveform_display",
+      "description": "ECG waveform color region",
+      "owner": "tests.unit.test_waveform_display"
+    },
+    {
+      "id": "display.wave_emg",
+      "dut": "waveform_display",
+      "description": "EMG waveform color region",
+      "owner": "tests.unit.test_waveform_display"
+    },
+    {
+      "id": "display.wave_grid",
+      "dut": "waveform_display",
+      "description": "Waveform grid region",
+      "owner": "tests.unit.test_waveform_display"
+    },
+    {
+      "id": "display.wave_bg",
+      "dut": "waveform_display",
+      "description": "Waveform background region",
+      "owner": "tests.unit.test_waveform_display"
+    },
+    {
+      "id": "display.osd_class_regions",
+      "dut": "osd_overlay",
+      "description": "OSD class severity regions",
+      "owner": "tests.unit.test_osd_overlay"
+    },
+    {
+      "id": "display.osd_sensor_regions",
+      "dut": "osd_overlay",
+      "description": "OSD sensor icon regions",
+      "owner": "tests.unit.test_osd_overlay"
+    },
+    {
+      "id": "display.osd_conf_vitals",
+      "dut": "osd_overlay",
+      "description": "OSD confidence and vitals regions",
+      "owner": "tests.unit.test_osd_overlay"
+    },
+    {
+      "id": "display.text_cell_on_off",
+      "dut": "text_renderer",
+      "description": "Text renderer cell on/off pixels",
+      "owner": "tests.unit.test_text_renderer"
+    },
+    {
+      "id": "cnn_sub.relu_clip",
+      "dut": "cnn_submodules",
+      "description": "ReLU negative/positive/saturating behavior",
+      "owner": "tests.unit.test_cnn_submodules"
+    },
+    {
+      "id": "cnn_sub.conv_dw",
+      "dut": "cnn_submodules",
+      "description": "Depthwise conv smoke",
+      "owner": "tests.unit.test_cnn_submodules"
+    },
+    {
+      "id": "cnn_sub.conv_pw",
+      "dut": "cnn_submodules",
+      "description": "Pointwise conv smoke",
+      "owner": "tests.unit.test_cnn_submodules"
+    },
+    {
+      "id": "cnn_sub.maxpool",
+      "dut": "cnn_submodules",
+      "description": "2x2 maxpool smoke",
+      "owner": "tests.unit.test_cnn_submodules"
+    },
+    {
+      "id": "cnn_sub.global_maxpool",
+      "dut": "cnn_submodules",
+      "description": "Global maxpool smoke",
+      "owner": "tests.unit.test_cnn_submodules"
+    },
+    {
+      "id": "cnn_sub.fc_argmax",
+      "dut": "cnn_submodules",
+      "description": "FC argmax smoke",
+      "owner": "tests.unit.test_cnn_submodules"
+    },
+    {
+      "id": "fft.impulse",
+      "dut": "fft_radix2_64",
+      "description": "FFT impulse response",
+      "owner": "tests.unit.test_fft_radix2_64"
+    },
+    {
+      "id": "fft.dc",
+      "dut": "fft_radix2_64",
+      "description": "FFT DC response",
+      "owner": "tests.unit.test_fft_radix2_64"
+    },
+    {
+      "id": "fft.sine_bin",
+      "dut": "fft_radix2_64",
+      "description": "FFT sine-bin response",
+      "owner": "tests.unit.test_fft_radix2_64"
+    },
+    {
+      "id": "fft.reset",
+      "dut": "fft_radix2_64",
+      "description": "FFT reset behavior",
+      "owner": "tests.unit.test_fft_radix2_64"
+    },
+    {
+      "id": "full_instance.sensor_ingress_tree",
+      "dut": "full_instance",
+      "description": "Full system instantiates UART/SPI/I2C ingress tree",
+      "owner": "tests.integration.test_full_instance"
+    },
+    {
+      "id": "full_instance.weight_stream_tree",
+      "dut": "full_instance",
+      "description": "Full system instantiates flash weight loader and DDR3 write boundary",
+      "owner": "tests.integration.test_full_instance"
+    },
+    {
+      "id": "full_instance.stft_cnn_tree",
+      "dut": "full_instance",
+      "description": "Full system instantiates three STFT and CNN lanes",
+      "owner": "tests.integration.test_full_instance"
+    },
+    {
+      "id": "full_instance.standalone_helper_tree",
+      "dut": "full_instance",
+      "description": "Full system instantiates standalone helper RTL blocks",
+      "owner": "tests.integration.test_full_instance"
+    },
+    {
+      "id": "full_instance.display_tree",
+      "dut": "full_instance",
+      "description": "Full system instantiates VGA waveform OSD and text display tree",
+      "owner": "tests.integration.test_full_instance"
+    },
+    {
+      "id": "full_instance.decision_tree",
+      "dut": "full_instance",
+      "description": "Full system instantiates threshold and decision output tree",
+      "owner": "tests.integration.test_full_instance"
+    },
+    {
+      "id": "top.lite_elaboration",
+      "dut": "top_lite",
+      "description": "FPGA top lite mode elaborates/runs",
+      "owner": "tests.integration.test_top_modes"
+    },
+    {
+      "id": "top.sensor_boundary",
+      "dut": "top_lite",
+      "description": "Top-level sensor boundary pins driven",
+      "owner": "tests.integration.test_top_modes"
+    },
+    {
+      "id": "top.dvi_boundary",
+      "dut": "top_lite",
+      "description": "Top-level DVI boundary toggles",
+      "owner": "tests.integration.test_top_modes"
+    },
+    {
+      "id": "top.full_elaboration",
+      "dut": "top_full_lint",
+      "description": "FPGA top full mode elaborates for lint/smoke",
+      "owner": "tests.integration.test_top_modes"
+    },
+    {
+      "id": "weight_image.header_parse",
+      "dut": "weight_boot_loader",
+      "description": "Packed weight image header parsed and validated",
+      "owner": "tests.memory.test_weight_boot_loader"
+    },
+    {
+      "id": "weight_image.entry_table_parse",
+      "dut": "weight_boot_loader",
+      "description": "Weight image entry table parsed",
+      "owner": "tests.memory.test_weight_boot_loader"
+    },
+    {
+      "id": "weight_image.copy_to_ddr",
+      "dut": "weight_boot_loader",
+      "description": "All image payloads copied into expected DDR3 addresses",
+      "owner": "tests.memory.test_weight_boot_loader"
+    },
+    {
+      "id": "weight_image.payload_alignment",
+      "dut": "weight_boot_loader",
+      "description": "256-byte aligned payload gaps are skipped correctly",
+      "owner": "tests.memory.test_weight_boot_loader"
+    },
+    {
+      "id": "flash_loader.copy_to_ddr",
+      "dut": "weight_boot_loader",
+      "description": "Flash byte stream drives DDR3 copy path",
+      "owner": "tests.memory.test_weight_boot_loader"
+    },
+    {
+      "id": "ddr3_adapter.write_burst",
+      "dut": "weight_boot_loader",
+      "description": "DDR3 native write command/data burst emitted",
+      "owner": "tests.memory.test_weight_boot_loader"
+    },
+    {
+      "id": "ddr3_adapter.write_partial_burst",
+      "dut": "weight_boot_loader",
+      "description": "Final partial DDR3 beat uses byte mask",
+      "owner": "tests.memory.test_weight_boot_loader"
+    },
+    {
+      "id": "shared_ai.ddr_prefetch_commands",
+      "dut": "ddr3_weight_prefetcher",
+      "description": "DDR3 read commands emitted for one 512-byte weight tile",
+      "owner": "tests.memory.test_ddr3_weight_prefetcher"
+    },
+    {
+      "id": "shared_ai.ddr_prefetch_cache_fill",
+      "dut": "ddr3_weight_prefetcher",
+      "description": "DDR3 read data fills all 512 local cache bytes",
+      "owner": "tests.memory.test_ddr3_weight_prefetcher"
+    },
+    {
+      "id": "shared_ai.weight_prefetch",
+      "dut": "shared_ai_system",
+      "description": "Shared AI system prefetches channel weights from DDR3",
+      "owner": "tests.integration.test_shared_ai_system"
+    },
+    {
+      "id": "shared_ai.cache_to_cnn",
+      "dut": "shared_ai_system",
+      "description": "Shared CNN loads weights through the local cache read port",
+      "owner": "tests.integration.test_shared_ai_system"
+    },
+    {
+      "id": "shared_ai.channel_advance",
+      "dut": "shared_ai_system",
+      "description": "Scheduler advances from EEG to ECG after one inference",
+      "owner": "tests.integration.test_shared_ai_system"
+    },
+    {
+      "id": "shared_ai.decision_update",
+      "dut": "shared_ai_system",
+      "description": "Shared AI classification updates the decision layer outputs",
+      "owner": "tests.integration.test_shared_ai_system"
+    },
+    {
+      "id": "system.weight_boot_to_ddr",
+      "dut": "shared_ai_full_pipeline",
+      "description": "Packed weight image is loaded through weight_boot_loader into DDR before inference",
+      "owner": "tests.integration.test_shared_ai_full_pipeline"
+    },
+    {
+      "id": "system.ddr_weights_used",
+      "dut": "shared_ai_full_pipeline",
+      "description": "Shared AI prefetches CNN weights from the loaded DDR image",
+      "owner": "tests.integration.test_shared_ai_full_pipeline"
+    },
+    {
+      "id": "system.replay_expected_class",
+      "dut": "shared_ai_full_pipeline",
+      "description": "Replay EEG/ECG/EMG windows produce expected 6-class CNN outputs",
+      "owner": "tests.integration.test_shared_ai_full_pipeline"
+    },
+    {
+      "id": "system.decision_to_osd",
+      "dut": "shared_ai_full_pipeline",
+      "description": "Full replay classification updates decision output consumed by OSD",
+      "owner": "tests.integration.test_shared_ai_full_pipeline"
+    },
+    {
+      "id": "system.real_top_weight_boot",
+      "dut": "top_shared_ai_smoke",
+      "description": "Real top_shared_ai boot FSM streams registered weight_image_rom through the CRC loader (weight_load_done, no error)",
+      "owner": "tests.integration.test_top_shared_ai_smoke"
+    },
+    {
+      "id": "system.real_top_ddr_payload",
+      "dut": "top_shared_ai_smoke",
+      "description": "Real top boot writes each per-channel weight image to its DDR base (0/4096/8192)",
+      "owner": "tests.integration.test_top_shared_ai_smoke"
+    },
+    {
+      "id": "system.real_top_ai_prefetch",
+      "dut": "top_shared_ai_smoke",
+      "description": "AI core released after boot and prefetches boot-loaded weights from DDR (weights_ready)",
+      "owner": "tests.integration.test_top_shared_ai_smoke"
+    },
+    {
+      "id": "system.real_top_tmds",
+      "dut": "top_shared_ai_smoke",
+      "description": "Real top display path produces resolvable TMDS outputs",
+      "owner": "tests.integration.test_top_shared_ai_smoke"
+    },
+    {
+      "id": "system.boot_error",
+      "dut": "top_shared_ai_smoke",
+      "description": "Corrupt weight image -> weight_load_error, boot never reaches RUN",
+      "owner": "tests.integration.test_top_shared_ai_smoke"
+    },
+    {
+      "id": "system.replay_bypass_on_boot_error",
+      "dut": "top_shared_ai_smoke",
+      "description": "Replay bypass releases the AI core even when boot failed",
+      "owner": "tests.integration.test_top_shared_ai_smoke"
+    },
+    {
+      "id": "replay.case_window",
+      "dut": "top_shared_ai_smoke",
+      "description": "AB13 replay_case selects the correct per-case ROM window base",
+      "owner": "tests.integration.test_top_shared_ai_smoke"
+    },
+    {
+      "id": "replay.case_vitals",
+      "dut": "top_shared_ai_smoke",
+      "description": "Per-case simulated SpO2/Temp vitals for Normal/Abnormal/Critical",
+      "owner": "tests.integration.test_top_shared_ai_smoke"
+    },
+    {
+      "id": "replay.live_passthrough",
+      "dut": "top_shared_ai_smoke",
+      "description": "replay_case 0 = live: vitals pass through, replay off",
+      "owner": "tests.integration.test_top_shared_ai_smoke"
+    },
+    {
+      "id": "replay.button_press",
+      "dut": "top_shared_ai_smoke",
+      "description": "Debounced AB13 press advances replay_case and enters replay mode",
+      "owner": "tests.integration.test_top_shared_ai_smoke"
+    },
+    {
+      "id": "shared_ai.ddr_prefetch_timeout",
+      "dut": "ddr3_weight_prefetcher",
+      "description": "DDR3 read never returns -> prefetcher watchdog raises error (no hang)",
+      "owner": "tests.memory.test_ddr3_weight_prefetcher"
+    },
+    {
+      "id": "weight_cache.readback",
+      "dut": "weight_cache",
+      "description": "Registered (1-cycle) weight cache write/read-back across the address space",
+      "owner": "tests.unit.test_weight_cache"
+    },
+    {
+      "id": "weight_cache.write_read",
+      "dut": "weight_cache",
+      "description": "Write-then-read of a fresh address returns the new byte (no stale read)",
+      "owner": "tests.unit.test_weight_cache"
+    },
+    {
+      "id": "severity.eeg_map",
+      "dut": "severity_mapper",
+      "description": "EEG 6-class -> 3-level severity map (Critical class 2)",
+      "owner": "tests.unit.test_severity_mapper"
+    },
+    {
+      "id": "severity.ecg_map",
+      "dut": "severity_mapper",
+      "description": "ECG 6-class -> 3-level severity map (Critical class 4)",
+      "owner": "tests.unit.test_severity_mapper"
+    },
+    {
+      "id": "severity.emg_map",
+      "dut": "severity_mapper",
+      "description": "EMG 6-class -> 3-level severity map (Critical class 3)",
+      "owner": "tests.unit.test_severity_mapper"
+    },
+    {
+      "id": "severity.level_reached",
+      "dut": "severity_mapper",
+      "description": "All three severity levels (Normal/Abnormal/Critical) reachable",
+      "owner": "tests.unit.test_severity_mapper"
+    },
+    {
+      "id": "vendor.bsram_boundary",
+      "dut": "vendor_boundary",
+      "description": "Gowin BSRAM wrapper boundary",
+      "owner": "tests.integration.test_vendor_boundary"
+    },
+    {
+      "id": "vendor.fifo_boundary",
+      "dut": "vendor_boundary",
+      "description": "Gowin FIFO wrapper boundary",
+      "owner": "tests.integration.test_vendor_boundary"
+    },
+    {
+      "id": "vendor.tmds_boundary",
+      "dut": "vendor_boundary",
+      "description": "TMDS PLL boundary",
+      "owner": "tests.integration.test_vendor_boundary"
+    },
+    {
+      "id": "vendor.dvi_boundary",
+      "dut": "vendor_boundary",
+      "description": "DVI TX boundary",
+      "owner": "tests.integration.test_vendor_boundary"
+    },
+    {
+      "id": "weight_image.crc_pass",
+      "dut": "weight_boot_loader",
+      "description": "Payload CRC32 matches manifest",
+      "owner": "tests.memory.test_weight_boot_loader_crc"
+    },
+    {
+      "id": "weight_image.crc_fail",
+      "dut": "weight_boot_loader",
+      "description": "Payload CRC32 mismatch raises crc_error",
+      "owner": "tests.memory.test_weight_boot_loader_crc"
+    },
+    {
+      "id": "conv2d.zero_input",
+      "dut": "conv2d_engine",
+      "description": "DW with all-zero input yields all-bias output",
+      "owner": "tests.unit.test_conv2d_engine_direct"
+    },
+    {
+      "id": "conv2d.impulse",
+      "dut": "conv2d_engine",
+      "description": "DW with single non-zero pixel yields kernel-shaped response",
+      "owner": "tests.unit.test_conv2d_engine_direct"
+    },
+    {
+      "id": "conv2d.random",
+      "dut": "conv2d_engine",
+      "description": "DW with random inputs matches numpy golden",
+      "owner": "tests.unit.test_conv2d_engine_direct"
+    },
+    {
+      "id": "conv2d.saturation",
+      "dut": "conv2d_engine",
+      "description": "DW saturation clip16 boundary (>+127 and <-127)",
+      "owner": "tests.unit.test_conv2d_engine_direct"
+    },
+    {
+      "id": "conv2d.pw_multichannel",
+      "dut": "conv2d_engine",
+      "description": "PW with multiple input channels matches golden",
+      "owner": "tests.unit.test_conv2d_engine_direct"
+    },
+    {
+      "id": "conv2d.frame_restart",
+      "dut": "conv2d_engine",
+      "description": "Two consecutive frames separated by frame_start",
+      "owner": "tests.unit.test_conv2d_engine_direct"
+    },
+    {
+      "id": "shared_ai.cnn_timeout",
+      "dut": "biomed_shared_ai_system",
+      "description": "ST_WAIT watchdog asserts cnn_timeout_error and recovers (sim-only)",
+      "owner": "tests.integration.test_shared_ai_system"
+    },
+    {
+      "id": "cdc.bus_handshake_atomic",
+      "dut": "cdc_bus_handshake",
+      "description": "cdc_bus_handshake transfers multi-bit src\u2192dst atomically per src_update pulse",
+      "owner": "tests.unit.test_cdc_bus_handshake"
+    },
+    {
+      "id": "cdc.bus_handshake_reset",
+      "dut": "cdc_bus_handshake",
+      "description": "cdc_bus_handshake holds dst_data=0 under reset",
+      "owner": "tests.unit.test_cdc_bus_handshake"
+    }
+  ]
+}

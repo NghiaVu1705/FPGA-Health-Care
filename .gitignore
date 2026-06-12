@@ -1,0 +1,28 @@
+# This repo tracks only rtl/ and verification/ (RTL + verification for review).
+# Ignore everything at the top level, then re-include those two.
+/*
+!/.gitignore
+!/rtl/
+!/verification/
+
+# ── Junk inside the tracked dirs ─────────────────────────────────────────────
+# Python virtualenvs and caches
+**/.venv/
+**/__pycache__/
+*.pyc
+*.pyo
+
+# Simulation build artifacts / waveforms
+/verification/build/
+/verification/logs/
+**/*.vvp
+**/*.vcd
+**/*.fst
+**/*.ghw
+
+# Per-run coverage/result artifacts (keep the summary report only)
+/verification/reports/*.jsonl
+/verification/reports/*_results.xml
+
+# OS / editor cruft
+.DS_Store

@@ -1,0 +1,33 @@
+TOPLEVEL := biomed_full_system
+COCOTB_TEST_MODULES := tests.integration.test_full_instance
+
+COMPILE_ARGS += -DCOCOTB_SIM
+
+VERILOG_SOURCES := $(RTL_ROOT)/common/reset_sync.v
+VERILOG_SOURCES += $(RTL_ROOT)/common/clock_divider.v
+VERILOG_SOURCES += $(RTL_ROOT)/common/crc32.v
+VERILOG_SOURCES += $(RTL_ROOT)/memory/ddr3_burst_writer.v
+VERILOG_SOURCES += $(RTL_ROOT)/memory/weight_boot_loader.v
+VERILOG_SOURCES += $(RTL_ROOT)/serial_comm/uart/uart_rx.v
+VERILOG_SOURCES += $(RTL_ROOT)/serial_comm/uart/uart_tx.v
+VERILOG_SOURCES += $(RTL_ROOT)/serial_comm/uart/uart_top.v
+VERILOG_SOURCES += $(RTL_ROOT)/serial_comm/spi_slave/spi_slave.v
+VERILOG_SOURCES += $(RTL_ROOT)/serial_comm/i2c_slave/i2c_slave.v
+VERILOG_SOURCES += $(RTL_ROOT)/healthcare_core/threshold/threshold_proc.v
+VERILOG_SOURCES += $(RTL_ROOT)/healthcare_core/decision/decision_layer.v
+VERILOG_SOURCES += $(RTL_ROOT)/healthcare_core/stft/hamming_window.v
+VERILOG_SOURCES += $(RTL_ROOT)/healthcare_core/stft/magnitude_calc.v
+VERILOG_SOURCES += $(RTL_ROOT)/healthcare_core/stft/fft_radix2_64.v
+VERILOG_SOURCES += $(RTL_ROOT)/healthcare_core/stft/stft_top.v
+VERILOG_SOURCES += $(RTL_ROOT)/healthcare_core/cnn_accelerator/mac_unit.v
+VERILOG_SOURCES += $(RTL_ROOT)/healthcare_core/cnn_accelerator/relu_unit.v
+VERILOG_SOURCES += $(RTL_ROOT)/healthcare_core/cnn_accelerator/maxpool_unit.v
+VERILOG_SOURCES += $(RTL_ROOT)/healthcare_core/cnn_accelerator/global_maxpool_unit.v
+VERILOG_SOURCES += $(RTL_ROOT)/healthcare_core/cnn_accelerator/conv2d_engine.v
+VERILOG_SOURCES += $(RTL_ROOT)/healthcare_core/cnn_accelerator/fc_layer.v
+VERILOG_SOURCES += $(RTL_ROOT)/healthcare_core/cnn_accelerator/cnn_top.v
+VERILOG_SOURCES += $(RTL_ROOT)/display/vga_timing.v
+VERILOG_SOURCES += $(RTL_ROOT)/display/waveform_display.v
+VERILOG_SOURCES += $(RTL_ROOT)/display/text_renderer.v
+VERILOG_SOURCES += $(RTL_ROOT)/display/osd_overlay.v
+VERILOG_SOURCES += $(RTL_ROOT)/system/biomed_full_system.v
