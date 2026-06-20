@@ -5,7 +5,7 @@
 // Định dạng khung (EMG RX): {0xAA, data_hi, data_lo, checksum}
 //   checksum = data_hi ^ data_lo
 module uart_top #(
-    parameter CLK_FRE  = 100,      // MHz
+    parameter CLK_FRE  = 50,       // MHz (phải khớp sys_clk từ gowin_pll_sys)
     parameter BAUD_RATE = 115200
 )(
     input  sys_clk,

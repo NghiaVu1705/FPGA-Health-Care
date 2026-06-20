@@ -18,7 +18,7 @@ module biomed_shared_ai_system #(
     parameter [7:0]  EMG_CRITICAL_CLASS = 8'd3,
     parameter [4:0]  PIPELINE_FLUSH_CYCLES = 5'd15,   // thời gian giữ ST_RESET, trước đây là hằng số 15
     parameter [9:0]  CNN_CACHE_LOAD_CYCLES = 10'd512, // số chu kỳ để cnn_top nạp trọng số cache
-    parameter [23:0] CNN_INFER_TIMEOUT     = 24'd1_000_000  // số chu kỳ watchdog của ST_WAIT (~10ms@100MHz)
+    parameter [23:0] CNN_INFER_TIMEOUT     = 24'd1_000_000  // số chu kỳ watchdog của ST_WAIT (~20ms@50MHz)
 )(
     input                  sys_clk,
     input                  rst_n,

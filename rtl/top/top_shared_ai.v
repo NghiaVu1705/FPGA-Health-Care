@@ -110,7 +110,7 @@ reg         tx_valid_r;
 wire        tx_ready_w;
 
 uart_top #(
-    .CLK_FRE  (100),
+    .CLK_FRE  (50),          // phải khớp sys_clk từ gowin_pll_sys (50 MHz)
     .BAUD_RATE(115200)
 ) u_uart (
     .sys_clk   (sys_clk),

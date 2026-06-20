@@ -1,6 +1,8 @@
 // cnn_top.v ↔ cnn_top.py
 // Bộ điều phối suy luận CNN. Nạp trọng số INT8 từ BSRAM khi khởi động,
 // sau đó chạy toàn bộ pipeline trên mỗi spectrogram 32x32.
+// LƯU Ý: default NUM_CLASSES=3 cho các top cũ (top.v, biomed_full_system.v).
+//   shared-AI (biomed_shared_ai_system.v) override NUM_CLASSES=6.
 module cnn_top #(
     parameter NUM_CLASSES = 3,
     parameter CLASS_BITS = (NUM_CLASSES <= 2) ? 1 : $clog2(NUM_CLASSES)

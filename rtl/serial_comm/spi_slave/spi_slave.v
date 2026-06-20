@@ -3,7 +3,7 @@
 //
 // Định dạng khung: {signal_type[3:0], sample[11:0]}
 //   signal_type: 4'h0 = EEG, 4'h1 = ECG
-//   sample:      giá trị ADC 12 bit không dấu, ánh xạ sang INT16 qua (sample - 2048) << 4
+//   sample:      giá trị ADC 12 bit không dấu, ánh xạ sang INT16 qua (sample - 2048)
 //
 // SPI Mode 0: CPOL=0, CPHA=0 (chốt ở cạnh lên SCK, dịch ở cạnh xuống)
 module spi_slave (
@@ -63,7 +63,7 @@ always @(posedge sys_clk or negedge rst_n) begin
             shift_reg <= {shift_reg[14:0], mosi_d1};
             if (bit_cnt == 4'd15) begin
                 bit_cnt  <= 4'd0;
-                // mở rộng dấu ADC 12 bit sang INT16: (adc - 2048) << 4
+                // mở rộng dấu ADC 12 bit sang INT16: (adc - 2048)
                 rx_data  <= $signed({1'b0, shift_reg[10:0], mosi_d1}) - $signed(16'd2048);
                 channel  <= {1'b0, shift_reg[14]};  // bit14 = signal_type[0]
                 rx_valid <= 1'b1;
