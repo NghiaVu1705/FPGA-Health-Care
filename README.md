@@ -22,9 +22,9 @@ This system monitors five biosignal channels simultaneously on a single FPGA chi
 ```
 EEG (256 Hz) ──┐
 ECG (500 Hz) ──┤   ┌──────────┐    ┌─────────────────┐    ┌──────────┐    ┌──────────────┐
-EMG (1000 Hz) ─┼──►│ STFT     │───►│ Tiny CNN (INT8)  │───►│ Severity │───►│ OSD HDMI     │
-SpO₂ ──────────┤   │ 2048-pt  │    │ Depthwise-Sep    │    │ Decision │    │ Waveform +   │
-Temp ──────────┘   │ 32×32    │    │ DW+PW ×2 + FC   │    │ 5-source │    │ Alerts        │
+EMG (1000 Hz) ─┼──►│ STFT     │───►│ Tiny CNN (INT8) │───►│ Severity │───►│ OSD HDMI     │
+SpO₂ ──────────┤   │ 2048-pt  │    │ Depthwise-Sep   │    │ Decision │    │ Waveform +   │
+Temp ──────────┘   │ 32×32    │    │ DW+PW ×2 + FC   │    │ 5-source │    │ Alerts       │
                    └──────────┘    └─────────────────┘    └──────────┘    └──────────────┘
 ```
 
