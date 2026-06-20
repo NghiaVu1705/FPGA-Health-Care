@@ -327,6 +327,12 @@
       "owner": "tests.unit.test_i2c_slave"
     },
     {
+      "id": "i2c.ack_held_9th_clock",
+      "dut": "i2c_slave",
+      "description": "Slave holds ACK (SDA low) through the full 9th SCL pulse so a real master reads ACK",
+      "owner": "tests.unit.test_i2c_slave"
+    },
+    {
       "id": "display.vga_de",
       "dut": "vga_timing",
       "description": "VGA active display enable region",
@@ -387,9 +393,21 @@
       "owner": "tests.unit.test_osd_overlay"
     },
     {
+      "id": "display.osd_icon_content",
+      "dut": "osd_overlay",
+      "description": "OSD status icon pixel follows the icon ROM bitmap content",
+      "owner": "tests.unit.test_osd_overlay"
+    },
+    {
       "id": "display.text_cell_on_off",
       "dut": "text_renderer",
       "description": "Text renderer cell on/off pixels",
+      "owner": "tests.unit.test_text_renderer"
+    },
+    {
+      "id": "display.text_font_content",
+      "dut": "text_renderer",
+      "description": "Glyph 'A' renders pixel-exact from the real font8x16.hex bitmap",
       "owner": "tests.unit.test_text_renderer"
     },
     {

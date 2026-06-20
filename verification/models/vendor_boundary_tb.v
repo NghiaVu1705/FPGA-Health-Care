@@ -40,10 +40,9 @@ gowin_bsram_twiddle u_twiddle (
     .dout(twiddle_data)
 );
 
-gowin_fifo_async u_fifo (
+sync_fifo u_fifo (
     .Reset(~rst_n),
-    .WrClk(clk),
-    .RdClk(clk),
+    .clk  (clk),
     .WrEn(fifo_wr_en),
     .RdEn(fifo_rd_en),
     .Data(fifo_data),

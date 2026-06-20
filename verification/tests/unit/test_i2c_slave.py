@@ -41,7 +41,12 @@ async def stop_cond(dut):
     await wait_cycles(dut)
 
 
-async def write_byte(dut, value):
+async def clock_byte(dut, value):
+    """Clock 8 data bits (MSB first) then the 9th (ACK) clock.
+
+    During the 9th SCL-high the master releases SDA; a compliant slave pulls SDA
+    low for the whole pulse. Returns the sampled ACK bit (0 = ACK, 1 = NAK).
+    """
     for bit in range(7, -1, -1):
         dut.scl.value = 0
         dut.sda_drive_en.value = 1
@@ -49,35 +54,32 @@ async def write_byte(dut, value):
         await wait_cycles(dut)
         dut.scl.value = 1
         await wait_cycles(dut)
+
+    # 9th clock: release SDA so the slave can drive ACK.
     dut.scl.value = 0
     dut.sda_drive_en.value = 0
     dut.sda_drive.value = 1
-    await wait_cycles(dut)
+    await wait_cycles(dut, 6)          # let the 8th fall propagate + slave assert ACK
     dut.scl.value = 1
-    await wait_cycles(dut)
+    await wait_cycles(dut, 6)          # 9th SCL high — ACK must be held here
+    ack = int(dut.sda_line.value)      # 0 = slave pulled low (ACK), 1 = released (NAK)
     dut.scl.value = 0
+    await wait_cycles(dut)
     dut.sda_drive_en.value = 1
     dut.sda_drive.value = 1
     await wait_cycles(dut)
+    return ack
 
 
 async def write_register(dut, address_byte, reg_addr, data):
+    """Full write transaction. Returns the (addr, reg, data) ACK bits."""
     await start_cond(dut)
-    await write_byte(dut, address_byte)
-    await write_byte(dut, reg_addr)
-    await write_byte(dut, data)
+    a = await clock_byte(dut, address_byte)
+    r = await clock_byte(dut, reg_addr)
+    d = await clock_byte(dut, data)
     await stop_cond(dut)
     await wait_cycles(dut, 10)
-
-
-async def decoded_write(dut, reg_addr, data):
-    dut.u_dut.reg_addr.value = reg_addr
-    dut.u_dut.data_byte.value = data
-    dut.u_dut.state.value = 6
-    dut.u_dut.scl_d1.value = 0
-    dut.u_dut.scl_d2.value = 1
-    await RisingEdge(dut.sys_clk)
-    await wait_cycles(dut, 2)
+    return a, r, d
 
 
 @cocotb.test()
@@ -89,27 +91,43 @@ async def test_i2c_register_writes_and_recovery(dut):
     assert int(dut.temp_raw.value) == 72
     cover("i2c.reset_defaults")
 
-    await decoded_write(dut, 0x00, 91)
+    # Real bit-level write to the SpO2 register. Verify the stored value AND that
+    # the slave holds ACK (SDA low) through the 9th SCL pulse on every byte.
+    a, r, d = await write_register(dut, 0x90, 0x00, 91)
     assert int(dut.spo2_raw.value) == 91
+    assert (a, r, d) == (0, 0, 0), f"slave must ACK each byte, got {(a, r, d)}"
     cover("i2c.write_spo2")
+    cover("i2c.ack_held_9th_clock")
 
-    await decoded_write(dut, 0x01, 79)
+    a, r, d = await write_register(dut, 0x90, 0x01, 79)
     assert int(dut.temp_raw.value) == 79
+    assert (a, r, d) == (0, 0, 0)
     cover("i2c.write_temp")
 
+    # Wrong slave address (0x92 >> 1 = 0x49): slave must NAK and leave vitals alone.
     old_spo2 = int(dut.spo2_raw.value)
-    await write_register(dut, 0x92, 0x00, 10)
+    await start_cond(dut)
+    a = await clock_byte(dut, 0x92)
+    await stop_cond(dut)
+    await wait_cycles(dut, 10)
     assert int(dut.spo2_raw.value) == old_spo2
+    assert a == 1, f"unmatched address must NAK, got {a}"
     cover("i2c.invalid_address")
 
+    # Unknown register (0x7F): bytes are still ACKed at protocol level but the
+    # write is ignored, so vitals stay unchanged.
+    old_spo2 = int(dut.spo2_raw.value)
     old_temp = int(dut.temp_raw.value)
-    await decoded_write(dut, 0x7F, 33)
+    a, r, d = await write_register(dut, 0x90, 0x7F, 33)
+    assert int(dut.spo2_raw.value) == old_spo2
     assert int(dut.temp_raw.value) == old_temp
+    assert (a, r, d) == (0, 0, 0)
     cover("i2c.invalid_register")
 
+    # Repeated start / stop recovery.
     await start_cond(dut)
-    await write_byte(dut, 0x90)
-    await write_byte(dut, 0x00)
+    await clock_byte(dut, 0x90)
+    await clock_byte(dut, 0x00)
     await start_cond(dut)
     await stop_cond(dut)
     await wait_cycles(dut, 10)

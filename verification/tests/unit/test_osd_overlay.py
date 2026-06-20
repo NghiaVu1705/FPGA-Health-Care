@@ -58,3 +58,16 @@ async def test_osd_regions(dut):
     dut.confidence.value = 0
     assert await rgb_at(dut, 500, 610) == 0x444444, "conf low gray"
     cover("display.osd_conf_vitals")
+
+    # Icon layer: the status icon sits at (300..316, 620..636), id = CHECK (0)
+    # when class_out==0. Deposit a known top-row bitmap (icon_rom addressed as
+    # {icon_id, row}) and confirm the rendered icon pixel actually changes when
+    # the bitmap bit is set vs cleared — i.e. the icon ROM content drives output,
+    # not an uninitialised ROM.
+    dut.class_out.value = 0                 # status icon id 0 (CHECK)
+    dut.icon_rom[0].value = 0x8000          # row 0, leftmost pixel on
+    on_px = await rgb_at(dut, 300, 620)
+    dut.icon_rom[0].value = 0x0000          # row 0 blank
+    off_px = await rgb_at(dut, 300, 620)
+    assert on_px != off_px, f"icon pixel must follow ROM content: on={on_px:06x} off={off_px:06x}"
+    cover("display.osd_icon_content")

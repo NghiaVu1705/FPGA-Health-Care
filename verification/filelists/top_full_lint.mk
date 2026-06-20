@@ -4,7 +4,7 @@ COCOTB_TEST_MODULES := tests.integration.test_top_modes
 COMPILE_ARGS += -DUSE_GOWIN_IP_STUBS -Ptop.ENABLE_FULL_AI_LANES=1 -Ptop.ENABLE_EEG_AI_LANE=1
 
 VERILOG_SOURCES := $(VERIF_ROOT)/models/gowin_ip_models.v
-VERILOG_SOURCES += $(RTL_ROOT)/gowin_ip/gowin_fifo_async.v
+VERILOG_SOURCES += $(RTL_ROOT)/common/sync_fifo.v
 VERILOG_SOURCES += $(VERIF_ROOT)/models/tmds_pll_stub.v
 VERILOG_SOURCES += $(VERIF_ROOT)/models/dvi_tx_stub.v
 VERILOG_SOURCES += $(RTL_ROOT)/common/reset_sync.v

@@ -2,7 +2,7 @@
 """Functional check of the multi-channel Signal Replay self-test (Icarus Verilog).
 
 Drives the REAL ``top_shared_ai`` RTL (debouncer + replay FSM + replay_rom +
-FIFO write MUX + real ``gowin_fifo_async``).  Every heavy vendor/child module
+FIFO write MUX + real ``sync_fifo``).  Every heavy vendor/child module
 (PLLs, DDR3, BSRAM, serial slaves, display, and the AI core) is replaced by a
 small behavioural stub.  The AI-core stub continuously drains the three FIFOs
 (with a deliberate back-pressure stall window) so an entire 2048-sample replay
@@ -26,7 +26,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 TOP = REPO / "rtl/top/top_shared_ai.v"
-FIFO = REPO / "rtl/gowin_ip/gowin_fifo_async.v"
+FIFO = REPO / "rtl/common/sync_fifo.v"
 # Replay hex live next to top_shared_ai.v (rtl/top/) — where GowinSynthesis
 # resolves the bare-name $readmemh, same as font8x16.hex in rtl/display/.
 FINAL = REPO / "rtl" / "top"

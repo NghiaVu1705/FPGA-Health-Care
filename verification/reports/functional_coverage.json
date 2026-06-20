@@ -4,7 +4,7 @@
       "covered": true,
       "description": "SpO2 normal boundary and interior",
       "dut": "threshold_proc",
-      "hit_count": 10,
+      "hit_count": 20,
       "id": "threshold.spo2_normal",
       "owner": "tests.unit.test_threshold_proc"
     },
@@ -12,7 +12,7 @@
       "covered": true,
       "description": "SpO2 abnormal boundary and interior",
       "dut": "threshold_proc",
-      "hit_count": 2,
+      "hit_count": 4,
       "id": "threshold.spo2_abnormal",
       "owner": "tests.unit.test_threshold_proc"
     },
@@ -20,7 +20,7 @@
       "covered": true,
       "description": "SpO2 critical boundary and interior",
       "dut": "threshold_proc",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "threshold.spo2_critical",
       "owner": "tests.unit.test_threshold_proc"
     },
@@ -28,7 +28,7 @@
       "covered": true,
       "description": "Temperature normal range",
       "dut": "threshold_proc",
-      "hit_count": 7,
+      "hit_count": 14,
       "id": "threshold.temp_normal",
       "owner": "tests.unit.test_threshold_proc"
     },
@@ -36,7 +36,7 @@
       "covered": true,
       "description": "Temperature abnormal low range",
       "dut": "threshold_proc",
-      "hit_count": 2,
+      "hit_count": 4,
       "id": "threshold.temp_abnormal_low",
       "owner": "tests.unit.test_threshold_proc"
     },
@@ -44,7 +44,7 @@
       "covered": true,
       "description": "Temperature abnormal high range",
       "dut": "threshold_proc",
-      "hit_count": 2,
+      "hit_count": 4,
       "id": "threshold.temp_abnormal_high",
       "owner": "tests.unit.test_threshold_proc"
     },
@@ -52,7 +52,7 @@
       "covered": true,
       "description": "Temperature critical low range",
       "dut": "threshold_proc",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "threshold.temp_critical_low",
       "owner": "tests.unit.test_threshold_proc"
     },
@@ -60,7 +60,7 @@
       "covered": true,
       "description": "Temperature critical high range",
       "dut": "threshold_proc",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "threshold.temp_critical_high",
       "owner": "tests.unit.test_threshold_proc"
     },
@@ -68,7 +68,7 @@
       "covered": true,
       "description": "Constrained random threshold samples",
       "dut": "threshold_proc",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "threshold.random_constrained",
       "owner": "tests.unit.test_threshold_proc"
     },
@@ -76,7 +76,7 @@
       "covered": true,
       "description": "Normal output class",
       "dut": "decision_layer",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "decision.class_0",
       "owner": "tests.unit.test_decision_layer"
     },
@@ -84,7 +84,7 @@
       "covered": true,
       "description": "Abnormal output class",
       "dut": "decision_layer",
-      "hit_count": 2,
+      "hit_count": 4,
       "id": "decision.class_1",
       "owner": "tests.unit.test_decision_layer"
     },
@@ -92,7 +92,7 @@
       "covered": true,
       "description": "Critical output class",
       "dut": "decision_layer",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "decision.class_2",
       "owner": "tests.unit.test_decision_layer"
     },
@@ -100,7 +100,7 @@
       "covered": true,
       "description": "Invalid 2'b11 input is fail-safe critical",
       "dut": "decision_layer",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "decision.class_3_fail_safe",
       "owner": "tests.unit.test_decision_layer"
     },
@@ -108,7 +108,7 @@
       "covered": true,
       "description": "Tie-break selects higher severity",
       "dut": "decision_layer",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "decision.tie_break_high_severity",
       "owner": "tests.unit.test_decision_layer"
     },
@@ -116,7 +116,7 @@
       "covered": true,
       "description": "Five-sample sliding window updates class",
       "dut": "decision_layer",
-      "hit_count": 2,
+      "hit_count": 4,
       "id": "decision.sliding_window",
       "owner": "tests.unit.test_decision_layer"
     },
@@ -124,7 +124,7 @@
       "covered": true,
       "description": "Low confidence count",
       "dut": "decision_layer",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "decision.conf_low",
       "owner": "tests.unit.test_decision_layer"
     },
@@ -132,7 +132,7 @@
       "covered": true,
       "description": "Medium confidence count",
       "dut": "decision_layer",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "decision.conf_medium",
       "owner": "tests.unit.test_decision_layer"
     },
@@ -140,7 +140,7 @@
       "covered": true,
       "description": "High confidence count",
       "dut": "decision_layer",
-      "hit_count": 3,
+      "hit_count": 6,
       "id": "decision.conf_high",
       "owner": "tests.unit.test_decision_layer"
     },
@@ -148,7 +148,7 @@
       "covered": true,
       "description": "EEG trigger bit",
       "dut": "decision_layer",
-      "hit_count": 3,
+      "hit_count": 6,
       "id": "decision.trigger_eeg",
       "owner": "tests.unit.test_decision_layer"
     },
@@ -156,7 +156,7 @@
       "covered": true,
       "description": "ECG trigger bit",
       "dut": "decision_layer",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "decision.trigger_ecg",
       "owner": "tests.unit.test_decision_layer"
     },
@@ -164,7 +164,7 @@
       "covered": true,
       "description": "EMG trigger bit",
       "dut": "decision_layer",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "decision.trigger_emg",
       "owner": "tests.unit.test_decision_layer"
     },
@@ -172,7 +172,7 @@
       "covered": true,
       "description": "SpO2 trigger bit",
       "dut": "decision_layer",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "decision.trigger_spo2",
       "owner": "tests.unit.test_decision_layer"
     },
@@ -180,7 +180,7 @@
       "covered": true,
       "description": "Temperature trigger bit",
       "dut": "decision_layer",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "decision.trigger_temp",
       "owner": "tests.unit.test_decision_layer"
     },
@@ -244,7 +244,7 @@
       "covered": true,
       "description": "EEG ROM image load",
       "dut": "cnn_top",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "cnn.rom_eeg",
       "owner": "tests.subsystem.test_cnn_top"
     },
@@ -252,7 +252,7 @@
       "covered": true,
       "description": "ECG ROM image availability",
       "dut": "cnn_top",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "cnn.rom_ecg",
       "owner": "tests.subsystem.test_cnn_top"
     },
@@ -260,7 +260,7 @@
       "covered": true,
       "description": "EMG ROM image availability",
       "dut": "cnn_top",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "cnn.rom_emg",
       "owner": "tests.subsystem.test_cnn_top"
     },
@@ -268,7 +268,7 @@
       "covered": true,
       "description": "First byte spec_start behavior",
       "dut": "cnn_top",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "cnn.first_byte_start",
       "owner": "tests.subsystem.test_cnn_top"
     },
@@ -276,7 +276,7 @@
       "covered": true,
       "description": "Input valid gap tolerance",
       "dut": "cnn_top",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "cnn.valid_gap",
       "owner": "tests.subsystem.test_cnn_top"
     },
@@ -284,7 +284,7 @@
       "covered": true,
       "description": "RTL class equals numpy Tiny CNN",
       "dut": "cnn_top",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "cnn.numpy_match",
       "owner": "tests.subsystem.test_cnn_top"
     },
@@ -332,7 +332,7 @@
       "covered": true,
       "description": "SPI EEG channel decode",
       "dut": "spi_slave",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "spi.eeg_channel",
       "owner": "tests.unit.test_spi_slave"
     },
@@ -340,7 +340,7 @@
       "covered": true,
       "description": "SPI ECG channel decode",
       "dut": "spi_slave",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "spi.ecg_channel",
       "owner": "tests.unit.test_spi_slave"
     },
@@ -348,7 +348,7 @@
       "covered": true,
       "description": "ADC minimum sample decode",
       "dut": "spi_slave",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "spi.adc_min",
       "owner": "tests.unit.test_spi_slave"
     },
@@ -356,7 +356,7 @@
       "covered": true,
       "description": "ADC mid-scale sample decode",
       "dut": "spi_slave",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "spi.adc_mid",
       "owner": "tests.unit.test_spi_slave"
     },
@@ -364,7 +364,7 @@
       "covered": true,
       "description": "ADC maximum sample decode",
       "dut": "spi_slave",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "spi.adc_max",
       "owner": "tests.unit.test_spi_slave"
     },
@@ -372,7 +372,7 @@
       "covered": true,
       "description": "CS abort/recovery",
       "dut": "spi_slave",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "spi.cs_abort",
       "owner": "tests.unit.test_spi_slave"
     },
@@ -380,7 +380,7 @@
       "covered": true,
       "description": "Back-to-back SPI frames",
       "dut": "spi_slave",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "spi.back_to_back",
       "owner": "tests.unit.test_spi_slave"
     },
@@ -434,6 +434,14 @@
     },
     {
       "covered": true,
+      "description": "Slave holds ACK (SDA low) through the full 9th SCL pulse so a real master reads ACK",
+      "dut": "i2c_slave",
+      "hit_count": 1,
+      "id": "i2c.ack_held_9th_clock",
+      "owner": "tests.unit.test_i2c_slave"
+    },
+    {
+      "covered": true,
       "description": "VGA active display enable region",
       "dut": "vga_timing",
       "hit_count": 1,
@@ -452,7 +460,7 @@
       "covered": true,
       "description": "EEG waveform color region",
       "dut": "waveform_display",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "display.wave_eeg",
       "owner": "tests.unit.test_waveform_display"
     },
@@ -460,7 +468,7 @@
       "covered": true,
       "description": "ECG waveform color region",
       "dut": "waveform_display",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "display.wave_ecg",
       "owner": "tests.unit.test_waveform_display"
     },
@@ -468,7 +476,7 @@
       "covered": true,
       "description": "EMG waveform color region",
       "dut": "waveform_display",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "display.wave_emg",
       "owner": "tests.unit.test_waveform_display"
     },
@@ -476,7 +484,7 @@
       "covered": true,
       "description": "Waveform grid region",
       "dut": "waveform_display",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "display.wave_grid",
       "owner": "tests.unit.test_waveform_display"
     },
@@ -484,7 +492,7 @@
       "covered": true,
       "description": "Waveform background region",
       "dut": "waveform_display",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "display.wave_bg",
       "owner": "tests.unit.test_waveform_display"
     },
@@ -492,7 +500,7 @@
       "covered": true,
       "description": "OSD class severity regions",
       "dut": "osd_overlay",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "display.osd_class_regions",
       "owner": "tests.unit.test_osd_overlay"
     },
@@ -500,7 +508,7 @@
       "covered": true,
       "description": "OSD sensor icon regions",
       "dut": "osd_overlay",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "display.osd_sensor_regions",
       "owner": "tests.unit.test_osd_overlay"
     },
@@ -508,23 +516,39 @@
       "covered": true,
       "description": "OSD confidence and vitals regions",
       "dut": "osd_overlay",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "display.osd_conf_vitals",
+      "owner": "tests.unit.test_osd_overlay"
+    },
+    {
+      "covered": true,
+      "description": "OSD status icon pixel follows the icon ROM bitmap content",
+      "dut": "osd_overlay",
+      "hit_count": 2,
+      "id": "display.osd_icon_content",
       "owner": "tests.unit.test_osd_overlay"
     },
     {
       "covered": true,
       "description": "Text renderer cell on/off pixels",
       "dut": "text_renderer",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "display.text_cell_on_off",
+      "owner": "tests.unit.test_text_renderer"
+    },
+    {
+      "covered": true,
+      "description": "Glyph 'A' renders pixel-exact from the real font8x16.hex bitmap",
+      "dut": "text_renderer",
+      "hit_count": 2,
+      "id": "display.text_font_content",
       "owner": "tests.unit.test_text_renderer"
     },
     {
       "covered": true,
       "description": "ReLU negative/positive/saturating behavior",
       "dut": "cnn_submodules",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "cnn_sub.relu_clip",
       "owner": "tests.unit.test_cnn_submodules"
     },
@@ -532,7 +556,7 @@
       "covered": true,
       "description": "Depthwise conv smoke",
       "dut": "cnn_submodules",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "cnn_sub.conv_dw",
       "owner": "tests.unit.test_cnn_submodules"
     },
@@ -540,7 +564,7 @@
       "covered": true,
       "description": "Pointwise conv smoke",
       "dut": "cnn_submodules",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "cnn_sub.conv_pw",
       "owner": "tests.unit.test_cnn_submodules"
     },
@@ -548,7 +572,7 @@
       "covered": true,
       "description": "2x2 maxpool smoke",
       "dut": "cnn_submodules",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "cnn_sub.maxpool",
       "owner": "tests.unit.test_cnn_submodules"
     },
@@ -556,7 +580,7 @@
       "covered": true,
       "description": "Global maxpool smoke",
       "dut": "cnn_submodules",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "cnn_sub.global_maxpool",
       "owner": "tests.unit.test_cnn_submodules"
     },
@@ -564,7 +588,7 @@
       "covered": true,
       "description": "FC argmax smoke",
       "dut": "cnn_submodules",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "cnn_sub.fc_argmax",
       "owner": "tests.unit.test_cnn_submodules"
     },
@@ -572,7 +596,7 @@
       "covered": true,
       "description": "FFT impulse response",
       "dut": "fft_radix2_64",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "fft.impulse",
       "owner": "tests.unit.test_fft_radix2_64"
     },
@@ -580,7 +604,7 @@
       "covered": true,
       "description": "FFT DC response",
       "dut": "fft_radix2_64",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "fft.dc",
       "owner": "tests.unit.test_fft_radix2_64"
     },
@@ -588,7 +612,7 @@
       "covered": true,
       "description": "FFT sine-bin response",
       "dut": "fft_radix2_64",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "fft.sine_bin",
       "owner": "tests.unit.test_fft_radix2_64"
     },
@@ -596,7 +620,7 @@
       "covered": true,
       "description": "FFT reset behavior",
       "dut": "fft_radix2_64",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "fft.reset",
       "owner": "tests.unit.test_fft_radix2_64"
     },
@@ -684,7 +708,7 @@
       "covered": true,
       "description": "Packed weight image header parsed and validated",
       "dut": "weight_boot_loader",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "weight_image.header_parse",
       "owner": "tests.memory.test_weight_boot_loader"
     },
@@ -692,7 +716,7 @@
       "covered": true,
       "description": "Weight image entry table parsed",
       "dut": "weight_boot_loader",
-      "hit_count": 9,
+      "hit_count": 18,
       "id": "weight_image.entry_table_parse",
       "owner": "tests.memory.test_weight_boot_loader"
     },
@@ -700,7 +724,7 @@
       "covered": true,
       "description": "All image payloads copied into expected DDR3 addresses",
       "dut": "weight_boot_loader",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "weight_image.copy_to_ddr",
       "owner": "tests.memory.test_weight_boot_loader"
     },
@@ -708,7 +732,7 @@
       "covered": true,
       "description": "256-byte aligned payload gaps are skipped correctly",
       "dut": "weight_boot_loader",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "weight_image.payload_alignment",
       "owner": "tests.memory.test_weight_boot_loader"
     },
@@ -716,7 +740,7 @@
       "covered": true,
       "description": "Flash byte stream drives DDR3 copy path",
       "dut": "weight_boot_loader",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "flash_loader.copy_to_ddr",
       "owner": "tests.memory.test_weight_boot_loader"
     },
@@ -724,7 +748,7 @@
       "covered": true,
       "description": "DDR3 native write command/data burst emitted",
       "dut": "weight_boot_loader",
-      "hit_count": 58,
+      "hit_count": 116,
       "id": "ddr3_adapter.write_burst",
       "owner": "tests.memory.test_weight_boot_loader"
     },
@@ -732,7 +756,7 @@
       "covered": true,
       "description": "Final partial DDR3 beat uses byte mask",
       "dut": "weight_boot_loader",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "ddr3_adapter.write_partial_burst",
       "owner": "tests.memory.test_weight_boot_loader"
     },
@@ -740,7 +764,7 @@
       "covered": true,
       "description": "DDR3 read commands emitted for one 512-byte weight tile",
       "dut": "ddr3_weight_prefetcher",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "shared_ai.ddr_prefetch_commands",
       "owner": "tests.memory.test_ddr3_weight_prefetcher"
     },
@@ -748,7 +772,7 @@
       "covered": true,
       "description": "DDR3 read data fills all 512 local cache bytes",
       "dut": "ddr3_weight_prefetcher",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "shared_ai.ddr_prefetch_cache_fill",
       "owner": "tests.memory.test_ddr3_weight_prefetcher"
     },
@@ -756,7 +780,7 @@
       "covered": true,
       "description": "Shared AI system prefetches channel weights from DDR3",
       "dut": "shared_ai_system",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "shared_ai.weight_prefetch",
       "owner": "tests.integration.test_shared_ai_system"
     },
@@ -764,7 +788,7 @@
       "covered": true,
       "description": "Shared CNN loads weights through the local cache read port",
       "dut": "shared_ai_system",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "shared_ai.cache_to_cnn",
       "owner": "tests.integration.test_shared_ai_system"
     },
@@ -772,7 +796,7 @@
       "covered": true,
       "description": "Scheduler advances from EEG to ECG after one inference",
       "dut": "shared_ai_system",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "shared_ai.channel_advance",
       "owner": "tests.integration.test_shared_ai_system"
     },
@@ -780,7 +804,7 @@
       "covered": true,
       "description": "Shared AI classification updates the decision layer outputs",
       "dut": "shared_ai_system",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "shared_ai.decision_update",
       "owner": "tests.integration.test_shared_ai_system"
     },
@@ -788,7 +812,7 @@
       "covered": true,
       "description": "Packed weight image is loaded through weight_boot_loader into DDR before inference",
       "dut": "shared_ai_full_pipeline",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "system.weight_boot_to_ddr",
       "owner": "tests.integration.test_shared_ai_full_pipeline"
     },
@@ -796,7 +820,7 @@
       "covered": true,
       "description": "Shared AI prefetches CNN weights from the loaded DDR image",
       "dut": "shared_ai_full_pipeline",
-      "hit_count": 3,
+      "hit_count": 6,
       "id": "system.ddr_weights_used",
       "owner": "tests.integration.test_shared_ai_full_pipeline"
     },
@@ -804,7 +828,7 @@
       "covered": true,
       "description": "Replay EEG/ECG/EMG windows produce expected 6-class CNN outputs",
       "dut": "shared_ai_full_pipeline",
-      "hit_count": 3,
+      "hit_count": 6,
       "id": "system.replay_expected_class",
       "owner": "tests.integration.test_shared_ai_full_pipeline"
     },
@@ -812,7 +836,7 @@
       "covered": true,
       "description": "Full replay classification updates decision output consumed by OSD",
       "dut": "shared_ai_full_pipeline",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "system.decision_to_osd",
       "owner": "tests.integration.test_shared_ai_full_pipeline"
     },
@@ -900,7 +924,7 @@
       "covered": true,
       "description": "DDR3 read never returns -> prefetcher watchdog raises error (no hang)",
       "dut": "ddr3_weight_prefetcher",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "shared_ai.ddr_prefetch_timeout",
       "owner": "tests.memory.test_ddr3_weight_prefetcher"
     },
@@ -908,7 +932,7 @@
       "covered": true,
       "description": "Registered (1-cycle) weight cache write/read-back across the address space",
       "dut": "weight_cache",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "weight_cache.readback",
       "owner": "tests.unit.test_weight_cache"
     },
@@ -916,7 +940,7 @@
       "covered": true,
       "description": "Write-then-read of a fresh address returns the new byte (no stale read)",
       "dut": "weight_cache",
-      "hit_count": 1,
+      "hit_count": 2,
       "id": "weight_cache.write_read",
       "owner": "tests.unit.test_weight_cache"
     },
@@ -924,7 +948,7 @@
       "covered": true,
       "description": "EEG 6-class -> 3-level severity map (Critical class 2)",
       "dut": "severity_mapper",
-      "hit_count": 6,
+      "hit_count": 12,
       "id": "severity.eeg_map",
       "owner": "tests.unit.test_severity_mapper"
     },
@@ -932,7 +956,7 @@
       "covered": true,
       "description": "ECG 6-class -> 3-level severity map (Critical class 4)",
       "dut": "severity_mapper",
-      "hit_count": 6,
+      "hit_count": 12,
       "id": "severity.ecg_map",
       "owner": "tests.unit.test_severity_mapper"
     },
@@ -940,7 +964,7 @@
       "covered": true,
       "description": "EMG 6-class -> 3-level severity map (Critical class 3)",
       "dut": "severity_mapper",
-      "hit_count": 6,
+      "hit_count": 12,
       "id": "severity.emg_map",
       "owner": "tests.unit.test_severity_mapper"
     },
@@ -948,7 +972,7 @@
       "covered": true,
       "description": "All three severity levels (Normal/Abnormal/Critical) reachable",
       "dut": "severity_mapper",
-      "hit_count": 3,
+      "hit_count": 6,
       "id": "severity.level_reached",
       "owner": "tests.unit.test_severity_mapper"
     },
@@ -1074,8 +1098,8 @@
     }
   ],
   "coverage_percent": 100.0,
-  "covered_bins": 134,
+  "covered_bins": 137,
   "missing_bins": [],
-  "total_bins": 134,
+  "total_bins": 137,
   "unknown_bins": []
 }
