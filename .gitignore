@@ -1,18 +1,22 @@
-# This repo tracks only rtl/ and verification/ (RTL + verification for review).
-# Ignore everything at the top level, then re-include those two.
+# Track source and project inputs, not generated build output.
 /*
 !/.gitignore
+!/README.md
 !/rtl/
 !/verification/
+!/Gowin/
 
-# ── Junk inside the tracked dirs ─────────────────────────────────────────────
+# Gowin IDE generated output and local user state
+/Gowin/impl/
+/Gowin/*.gprj.user
+
 # Python virtualenvs and caches
 **/.venv/
 **/__pycache__/
 *.pyc
 *.pyo
 
-# Simulation build artifacts / waveforms
+# Simulation build artifacts and waveforms
 /verification/build/
 /verification/logs/
 **/*.vvp
@@ -20,9 +24,10 @@
 **/*.fst
 **/*.ghw
 
-# Per-run coverage/result artifacts (keep the summary report only)
+# Per-run coverage/result artifacts
 /verification/reports/*.jsonl
 /verification/reports/*_results.xml
 
-# OS / editor cruft
+# OS/editor local files
 .DS_Store
+/.vscode/

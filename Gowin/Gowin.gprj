@@ -1,0 +1,63 @@
+<?xml version="1" encoding="UTF-8"?>
+<!DOCTYPE gowin-fpga-project>
+<Project>
+    <Template>FPGA</Template>
+    <Version>5</Version>
+    <Device name="GW5AST-138B" pn="GW5AST-LV138PG484AC1/I0">gw5ast138b-011</Device>
+    <FileList>
+        <File path="../rtl/common/sync_fifo.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/common/cdc_bus_handshake.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/common/clock_divider.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/common/crc32.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/common/reset_sync.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/common/sram_sp.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/common/sync_2ff.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/display/osd_overlay.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/display/text_renderer.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/display/vga_timing.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/display/waveform_display.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/gowin_ip/ddr3_memory_interface/DDR3MI_400M.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/gowin_ip/dvi_tx/DVI_TX_Top.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/gowin_ip/gowin_bsram_cnn_ecg.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/gowin_ip/gowin_bsram_cnn_eeg.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/gowin_ip/gowin_bsram_cnn_emg.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/gowin_ip/gowin_bsram_hamming.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/gowin_ip/gowin_bsram_twiddle.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/gowin_ip/gowin_pll/TMDS_PLL_60HZ.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/gowin_ip/gowin_pll/TMDS_PLL_60HZ_mod.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/gowin_ip/gowin_pll/gowin_pll_400M.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/gowin_ip/gowin_pll/gowin_pll_400M_mod.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/gowin_ip/gowin_pll_sys.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/gowin_ip/pll_init.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/healthcare_core/cnn_accelerator/cnn_top.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/healthcare_core/cnn_accelerator/conv2d_engine.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/healthcare_core/cnn_accelerator/fc_layer.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/healthcare_core/cnn_accelerator/global_maxpool_unit.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/healthcare_core/cnn_accelerator/mac_unit.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/healthcare_core/cnn_accelerator/maxpool_unit.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/healthcare_core/cnn_accelerator/relu_unit.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/healthcare_core/decision/decision_layer.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/healthcare_core/stft/fft_radix2_64.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/healthcare_core/stft/hamming_window.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/healthcare_core/stft/magnitude_calc.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/healthcare_core/stft/stft_top.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/healthcare_core/threshold/threshold_proc.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/memory/ddr3_burst_writer.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/memory/ddr3_weight_prefetcher.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/memory/weight_boot_loader.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/memory/weight_cache_512x8.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/serial_comm/i2c_slave/i2c_slave.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/serial_comm/spi_slave/spi_slave.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/serial_comm/uart/uart_rx.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/serial_comm/uart/uart_top.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/serial_comm/uart/uart_tx.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/system/biomed_full_system.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/system/biomed_shared_ai_system.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/top/top.v" type="file.verilog" enable="0"/>
+        <File path="../rtl/top/top_full_arch.v" type="file.verilog" enable="0"/>
+        <File path="../rtl/top/top_shared_ai.v" type="file.verilog" enable="1"/>
+        <File path="../rtl/constraints/138K_DOCK.cst" type="file.cst" enable="1"/>
+        <File path="../rtl/constraints/Final.sdc" type="file.sdc" enable="1"/>
+        <File path="../rtl/constraints/TMDS_60HZ.sdc" type="file.sdc" enable="0"/>
+    </FileList>
+</Project>
