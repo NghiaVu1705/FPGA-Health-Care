@@ -383,7 +383,7 @@
     {
       "id": "display.osd_sensor_regions",
       "dut": "osd_overlay",
-      "description": "OSD sensor icon regions",
+      "description": "OSD sensor card regions (SpO2 px<1024, Temp >=1024; EEG/ECG/EMG trimmed Phase 3)",
       "owner": "tests.unit.test_osd_overlay"
     },
     {
@@ -393,9 +393,9 @@
       "owner": "tests.unit.test_osd_overlay"
     },
     {
-      "id": "display.osd_icon_content",
+      "id": "display.osd_icon_content_REMOVED",
       "dut": "osd_overlay",
-      "description": "OSD status icon pixel follows the icon ROM bitmap content",
+      "description": "[REMOVED Phase 3] OSD status icon pixel follows the icon ROM bitmap content — icon layer trimmed to reduce CLS",
       "owner": "tests.unit.test_osd_overlay"
     },
     {

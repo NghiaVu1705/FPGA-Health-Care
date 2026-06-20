@@ -33,8 +33,10 @@ async def rgb_at(dut, x, y):
 
 @cocotb.test()
 async def test_osd_regions(dut):
-    """Current layout: status banner rows 600..655 (STATUS px<400, CONF 400..799),
-    sensor cards rows 656..719. Pick background pixels above the text band (y=610)."""
+    """Layout sau trim OSD (Phase 3): status banner rows 600..655
+    (STATUS px<400, CONF 400..799, AI READY 800+),
+    sensor cards rows 656..719 (SpO2 px<1024, Temp >=1024).
+    Icon layer da bi go bo. The EEG/ECG/EMG da bi go bo."""
     cocotb.start_soon(Clock(dut.pixel_clk, 10, unit="ns").start())
     await reset(dut)
 
@@ -44,12 +46,12 @@ async def test_osd_regions(dut):
         assert await rgb_at(dut, 100, 610) == color, f"status class {cls}"
     cover("display.osd_class_regions")
 
-    # Sensor card background: EEG triggered -> active blue, else dark panel.
+    # Sensor card background: SpO2 abnormal (spo2_raw < 95) -> amber.
     dut.class_out.value = 0
-    dut.triggered_sensors.value = 0b10000          # EEG trigger (bit 4)
-    assert await rgb_at(dut, 100, 665) == 0x00AAFF, "eeg card active"
-    dut.triggered_sensors.value = 0
-    assert await rgb_at(dut, 100, 665) == 0x101820, "eeg card idle"
+    dut.spo2_raw.value = 90                            # low SpO2 triggers amber
+    assert await rgb_at(dut, 900, 665) == 0xFFAA00, "spo2 card abnormal"
+    dut.spo2_raw.value = 98                            # normal SpO2 -> dark
+    assert await rgb_at(dut, 900, 665) == 0x101820, "spo2 card normal"
     cover("display.osd_sensor_regions")
 
     # Confidence banner zone (px 400..799) follows confidence (HIGH->green, LOW->gray).
@@ -58,16 +60,3 @@ async def test_osd_regions(dut):
     dut.confidence.value = 0
     assert await rgb_at(dut, 500, 610) == 0x444444, "conf low gray"
     cover("display.osd_conf_vitals")
-
-    # Icon layer: the status icon sits at (300..316, 620..636), id = CHECK (0)
-    # when class_out==0. Deposit a known top-row bitmap (icon_rom addressed as
-    # {icon_id, row}) and confirm the rendered icon pixel actually changes when
-    # the bitmap bit is set vs cleared — i.e. the icon ROM content drives output,
-    # not an uninitialised ROM.
-    dut.class_out.value = 0                 # status icon id 0 (CHECK)
-    dut.icon_rom[0].value = 0x8000          # row 0, leftmost pixel on
-    on_px = await rgb_at(dut, 300, 620)
-    dut.icon_rom[0].value = 0x0000          # row 0 blank
-    off_px = await rgb_at(dut, 300, 620)
-    assert on_px != off_px, f"icon pixel must follow ROM content: on={on_px:06x} off={off_px:06x}"
-    cover("display.osd_icon_content")

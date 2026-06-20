@@ -134,9 +134,9 @@ localparam [11:0] OSD_TOP       = 12'd600;   // thanh HUD bắt đầu ở hàng
 localparam [11:0] BANNER_BOT    = 12'd656;   // dải banner = hàng 600..655
 localparam [11:0] TEXT_Y_BANNER = 12'd612;   // chữ 16x32 (2x) căn giữa trong 600..655
 localparam [11:0] TEXT_Y_CARDS  = 12'd680;   // chữ 8x16 (1x) căn giữa trong dải thẻ
-localparam [11:0] TEXT_Y_EEG    = 12'd8;
-localparam [11:0] TEXT_Y_ECG    = 12'd208;
-localparam [11:0] TEXT_Y_EMG    = 12'd408;
+localparam [11:0] TEXT_Y_EEG    = 12'd8;     // unused — waveform labels removed Phase 3
+localparam [11:0] TEXT_Y_ECG    = 12'd208;   // unused
+localparam [11:0] TEXT_Y_EMG    = 12'd408;   // unused
 
 // Độ sâu pixel-pipeline từ (hcount,vcount,de) tới (r,g,b). top_shared_ai làm trễ
 // tín hiệu đồng bộ HDMI (hs/vs/de) cùng lượng này; giữ hai bên đồng bộ với nhau.
@@ -169,23 +169,13 @@ wire in_cards  = in_osd && (vcount >= BANNER_BOT);
 
 wire in_banner_text = in_banner && (vcount >= TEXT_Y_BANNER) && (vcount < TEXT_Y_BANNER + 12'd32);
 wire in_cards_text  = in_cards  && (vcount >= TEXT_Y_CARDS)  && (vcount < TEXT_Y_CARDS  + 12'd16);
-wire in_eeg_label_text = de && (hcount < 12'd64) &&
-                         (vcount >= TEXT_Y_EEG) && (vcount < TEXT_Y_EEG + 12'd16);
-wire in_ecg_label_text = de && (hcount < 12'd64) &&
-                         (vcount >= TEXT_Y_ECG) && (vcount < TEXT_Y_ECG + 12'd16);
-wire in_emg_label_text = de && (hcount < 12'd64) &&
-                         (vcount >= TEXT_Y_EMG) && (vcount < TEXT_Y_EMG + 12'd16);
-wire in_wave_label_text = in_eeg_label_text || in_ecg_label_text || in_emg_label_text;
 
 // Khung panel (viền y tế): biên trên, vạch phân tách banner/thẻ, các vách ngăn.
 wire on_top_border = in_osd    && (vcount < OSD_TOP + 12'd2);
 wire on_band_sep   = in_osd    && (vcount >= BANNER_BOT - 12'd2) && (vcount < BANNER_BOT);
 wire on_banner_div = in_banner && ( (hcount >= 12'd400  && hcount < 12'd402)  ||
                                     (hcount >= 12'd800  && hcount < 12'd802) );
-wire on_cards_div  = in_cards  && ( (hcount >= 12'd256  && hcount < 12'd258)  ||
-                                    (hcount >= 12'd512  && hcount < 12'd514)  ||
-                                    (hcount >= 12'd768  && hcount < 12'd770)  ||
-                                    (hcount >= 12'd1024 && hcount < 12'd1026) );
+wire on_cards_div  = in_cards  && (hcount >= 12'd1024 && hcount < 12'd1026);
 wire hud_frame = on_top_border || on_band_sep || on_banner_div || on_cards_div;
 
 // ── Hàm trợ giúp ASCII ────────────────────────────────────────────────────────
@@ -286,43 +276,6 @@ function [7:0] ai_char;       // "AI READY"
     end
 endfunction
 
-function [7:0] lane_label_char;
-    input [2:0] idx;
-    input [1:0] lane;       // 0=EEG, 1=ECG, 2=EMG
-    begin
-        case (idx)
-            3'd0: lane_label_char = " ";
-            3'd1: lane_label_char = "E";
-            3'd2: lane_label_char = (lane == 2'd0) ? "E" :
-                                     (lane == 2'd1) ? "C" : "M";
-            3'd3: lane_label_char = "G";
-            default: lane_label_char = " ";
-        endcase
-    end
-endfunction
-
-function [7:0] sensor_char;
-    input [3:0] idx;
-    input [7:0] c0;
-    input [7:0] c1;
-    input [7:0] c2;
-    input       trig;
-    begin
-        case (idx)
-            4'd0: sensor_char = c0;
-            4'd1: sensor_char = c1;
-            4'd2: sensor_char = c2;
-            4'd3: sensor_char = ":";
-            4'd4: sensor_char = " ";
-            4'd5: sensor_char = trig ? "T" : "O";
-            4'd6: sensor_char = trig ? "R" : "K";
-            4'd7: sensor_char = trig ? "I" : " ";
-            4'd8: sensor_char = trig ? "G" : " ";
-            default: sensor_char = " ";
-        endcase
-    end
-endfunction
-
 function [7:0] spo2_value_char;
     input [4:0] idx;
     input [7:0] value;
@@ -388,24 +341,7 @@ always @(*) begin
     char_x_sel    = char_x;
     char_y_sel    = TEXT_Y_CARDS;
 
-    if (in_wave_label_text) begin
-        text_scale = 1'b0;
-        char_x_sel = char_x;
-        if (in_eeg_label_text) begin
-            char_y_sel  = TEXT_Y_EEG;
-            char_ascii  = lane_label_char(char_col[2:0], 2'd0);
-            text_fg_idx = IDX_EEG;
-        end else if (in_ecg_label_text) begin
-            char_y_sel  = TEXT_Y_ECG;
-            char_ascii  = lane_label_char(char_col[2:0], 2'd1);
-            text_fg_idx = IDX_ECG;
-        end else begin
-            char_y_sel  = TEXT_Y_EMG;
-            char_ascii  = lane_label_char(char_col[2:0], 2'd2);
-            text_fg_idx = IDX_EMG;
-        end
-        text_bg_idx = IDX_WAVE_BG;
-    end else if (in_banner_text) begin
+    if (in_banner_text) begin
         text_scale = 1'b1;
         char_x_sel = char_x_b;
         char_y_sel = TEXT_Y_BANNER;
@@ -427,19 +363,10 @@ always @(*) begin
         text_scale = 1'b0;
         char_x_sel = char_x;
         char_y_sel = TEXT_Y_CARDS;
-        if (char_col < 9'd32) begin                       // thẻ EEG
-            char_ascii    = (char_col < 9'd9) ?
-                            sensor_char(char_col[3:0], "E", "E", "G", eeg_trig) : " ";
-            text_bg_idx   = eeg_trig ? IDX_ACTIVE : IDX_DARK;
-        end else if (char_col < 9'd64) begin              // thẻ ECG
-            char_ascii    = ((char_col - 9'd32) < 9'd9) ?
-                            sensor_char(char_col - 9'd32, "E", "C", "G", ecg_trig) : " ";
-            text_bg_idx   = ecg_trig ? IDX_ACTIVE : IDX_DARK;
-        end else if (char_col < 9'd96) begin              // thẻ EMG
-            char_ascii    = ((char_col - 9'd64) < 9'd9) ?
-                            sensor_char(char_col - 9'd64, "E", "M", "G", emg_trig) : " ";
-            text_bg_idx   = emg_trig ? IDX_ACTIVE : IDX_DARK;
-        end else if (char_col < 9'd128) begin             // thẻ SpO2
+        if (char_col < 9'd96) begin                        // vùng trống (đã gỡ thẻ EEG/ECG/EMG)
+            char_ascii    = " ";
+            text_bg_idx   = IDX_DARK;
+        end else if (char_col < 9'd128) begin              // thẻ SpO2
             char_ascii    = ((char_col - 9'd96) < 9'd10) ?
                             spo2_value_char(char_col - 9'd96, spo2_raw) : " ";
             text_bg_idx   = spo2_low ? IDX_ABNORMAL : IDX_DARK;
@@ -465,9 +392,7 @@ always @(*) begin
         else if (hcount < 12'd800) osd_idx = conf_idx;    // CONF
         else                       osd_idx = IDX_DARK;    // AI
     end else if (in_cards) begin
-        if (hcount < 12'd256)       osd_idx = eeg_trig  ? IDX_ACTIVE   : IDX_DARK;
-        else if (hcount < 12'd512)  osd_idx = ecg_trig  ? IDX_ACTIVE   : IDX_DARK;
-        else if (hcount < 12'd768)  osd_idx = emg_trig  ? IDX_ACTIVE   : IDX_DARK;
+        if (hcount < 12'd768)       osd_idx = IDX_DARK;       // vùng trống (đã gỡ thẻ EEG/ECG/EMG)
         else if (hcount < 12'd1024) osd_idx = spo2_low  ? IDX_ABNORMAL : IDX_DARK;
         else                        osd_idx = temp_err  ? IDX_ABNORMAL : IDX_DARK;
     end else begin
@@ -476,72 +401,14 @@ always @(*) begin
 end
 
 // ── Lớp biểu tượng (icon) ─────────────────────────────────────────────────────
-// 8 icon x 16x16 (1bpp) trong ROM BSRAM có thanh ghi. Địa chỉ hóa theo id*16+row.
-//   0 DẤU TÍCH 1 CẢNH BÁO 2 NÃO 3 TIM 4 TIA SÉT 5 GIỌT 6 NHIỆT KẾ 7 TRỐNG
-// Icon trạng thái (banner): CHECK khi Bình thường, ngược lại WARNING. Icon thẻ: theo cảm biến.
-(* syn_ramstyle = "block_ram" *) reg [15:0] icon_rom [0:127];
-initial begin
-`ifndef COCOTB_SIM
-    $readmemh("icon_rom.hex", icon_rom);
-`endif
-end
-
-reg        icon_region;
-reg [2:0]  icon_id;
-reg [11:0] icon_left, icon_top;
-always @(*) begin
-    icon_region = 1'b0;
-    icon_id     = 3'd7;     // BLANK (trống)
-    icon_left   = 12'd0;
-    icon_top    = 12'd0;
-    if (in_banner && hcount >= 12'd300 && hcount < 12'd316 &&
-                     vcount >= 12'd620 && vcount < 12'd636) begin
-        icon_region = 1'b1;
-        icon_id     = (class_out == 2'd0) ? 3'd0 : 3'd1;   // CHECK / WARNING
-        icon_left   = 12'd300;  icon_top = 12'd620;
-    end else if (in_cards && vcount >= 12'd658 && vcount < 12'd674) begin
-        icon_top = 12'd658;
-        if      (hcount >= 12'd8    && hcount < 12'd24)   begin icon_region=1'b1; icon_id=3'd2; icon_left=12'd8;    end
-        else if (hcount >= 12'd264  && hcount < 12'd280)  begin icon_region=1'b1; icon_id=3'd3; icon_left=12'd264;  end
-        else if (hcount >= 12'd520  && hcount < 12'd536)  begin icon_region=1'b1; icon_id=3'd4; icon_left=12'd520;  end
-        else if (hcount >= 12'd776  && hcount < 12'd792)  begin icon_region=1'b1; icon_id=3'd5; icon_left=12'd776;  end
-        else if (hcount >= 12'd1032 && hcount < 12'd1048) begin icon_region=1'b1; icon_id=3'd6; icon_left=12'd1032; end
-    end
-end
-
-wire [11:0] icon_dy  = vcount - icon_top;
-wire [11:0] icon_dx  = hcount - icon_left;
-wire [3:0]  icon_row = icon_dy[3:0];
-wire [3:0]  icon_col = icon_dx[3:0];
-wire [6:0]  icon_addr = {icon_id, icon_row};
-
-// Pipeline icon: S1 địa chỉ -> S2 đọc BSRAM -> S3 icon_on (căn ở +3).
-reg [6:0]  icon_addr_s1;
-reg [3:0]  icon_col_s1, icon_col_s2;
-reg        icon_region_s1, icon_region_s2;
-reg [15:0] icon_word_s2;
-reg        icon_on_s3;
-always @(posedge pixel_clk or negedge rst_n) begin
-    if (!rst_n) begin
-        icon_addr_s1 <= 7'd0; icon_col_s1 <= 4'd0; icon_region_s1 <= 1'b0;
-        icon_word_s2 <= 16'd0; icon_col_s2 <= 4'd0; icon_region_s2 <= 1'b0;
-        icon_on_s3 <= 1'b0;
-    end else begin
-        icon_addr_s1   <= icon_addr;
-        icon_col_s1    <= icon_col;
-        icon_region_s1 <= icon_region;
-        icon_word_s2   <= icon_rom[icon_addr_s1];
-        icon_col_s2    <= icon_col_s1;
-        icon_region_s2 <= icon_region_s1;
-        icon_on_s3     <= icon_region_s2 && icon_word_s2[15 - icon_col_s2];
-    end
-end
-
+// ĐÃ GỠ BỎ để giảm CLS (Phase 3 trim OSD). Toàn bộ icon_rom, pipeline icon,
+// và nhánh icon trong composite đã được xoá.
+//
 // ── Pipeline điểm ảnh (an toàn định thời; tổng độ trễ = OSD_LATENCY = 5) ───────
 //   S1     : đưa vào thanh ghi chọn-ký-tự + vị trí + ảnh chụp nền (osd_bg_s1)
 //   u_text : dựng glyph 2 chu kỳ (ROM font BSRAM có thanh ghi) -> text @ +3
 //   s2/s3  : căn nền với text_pixel                            -> osd_bg @ +3
-//   S4     : mux ưu tiên (text/icon/nền)                       -> chỉ số màu
+//   S4     : mux ưu tiên (text/nền)           -> chỉ số màu
 //   S5     : tra CLUT có thanh ghi                             -> r/g/b
 reg [7:0]  char_ascii_s1;
 reg [11:0] char_x_s1, char_y_s1, hcount_s1, vcount_s1;
@@ -596,7 +463,7 @@ text_renderer u_text (
     .pixel_on(text_cell_on)
 );
 
-// ── Tổng hợp cuối: text > icon > nền (đều căn ở +3), rồi CLUT ─────────────────
+// ── Tổng hợp cuối: text > nền (đều căn ở +3), rồi CLUT ──────────────────────
 reg [4:0] composite_idx_s4;
 
 always @(posedge pixel_clk or negedge rst_n) begin
@@ -604,8 +471,6 @@ always @(posedge pixel_clk or negedge rst_n) begin
         composite_idx_s4 <= IDX_BLACK;
     end else if (text_cell_on) begin
         composite_idx_s4 <= fg_idx_s3;
-    end else if (icon_on_s3) begin
-        composite_idx_s4 <= IDX_WHITE;     // glyph icon (đơn sắc)
     end else begin
         composite_idx_s4 <= osd_bg_s3;
     end
