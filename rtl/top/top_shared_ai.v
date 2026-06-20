@@ -426,6 +426,18 @@ wire boot_run_enable = (boot_state == BOOT_RUN) && weight_load_done_r && !weight
 wire run_enable_eff      = boot_run_enable | mode_replay;
 wire ddr_boot_owns_port  = !run_enable_eff;
 
+// Reset ĐÃ ĐĂNG-KÝ cho lõi shared-AI. run_enable_eff phụ thuộc tổ hợp vào
+// weight_load_error_r/boot_state (điều khiển gần-như-tĩnh, không đổi trong lúc
+// FFT chạy). Đưa thẳng nó vào reset fanout-lớn của lõi tạo ra đường setup tới
+// hạn: weight_load_error_r -> run_enable_eff -> cổng ghi BSRAM buf_re_b của FFT
+// (sau khi buf_* chuyển từ regfile LUT sang BSRAM thì fanout reset tăng gấp đôi
+// -> -1.2 ns). Đăng-ký nó cắt cung tổ hợp này tại 1 flop (reset assert/deassert
+// trễ 1 chu kỳ là vô hại với cổng boot/mode) và để placer phát cây reset từ 1 FF
+// chuyên dụng (cùng -replicate). run_enable_eff TỔ HỢP dùng cho trọng tài cổng
+// DDR bên dưới được giữ nguyên (cần tức thời, không trễ).
+reg shared_ai_rst_n_r;
+always @(posedge sys_clk) shared_ai_rst_n_r <= sys_rst_n & run_enable_eff;
+
 // INIT_FILE là tên file TRƠ (không đường dẫn). GowinSynthesis phân giải $readmemh tên-trơ
 // tương đối với thư mục NGUỒN .v (file này -> rtl/top/), giống hệt như
 // font8x16.hex phân giải cạnh text_renderer.v trong rtl/display/. Nó KHÔNG
@@ -655,7 +667,7 @@ wire decision_update;
 
 biomed_shared_ai_system u_shared_ai (
     .sys_clk              (sys_clk),
-    .rst_n                (sys_rst_n & run_enable_eff),
+    .rst_n                (shared_ai_rst_n_r),
     .eeg_sample           (eeg_sample),
     .eeg_valid            (eeg_fifo_rd),
     .eeg_ready            (eeg_ready_core),

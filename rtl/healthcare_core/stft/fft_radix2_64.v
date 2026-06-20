@@ -40,8 +40,18 @@ wire signed [15:0] w_re = $signed(twiddle_data[15:0]);
 wire signed [15:0] w_im = $signed(twiddle_data[31:16]);
 
 // ── Bộ đệm làm việc nội bộ (mỗi cái 64×32 = 2K bit — suy luận thành BSRAM) ────
-(* syn_ramstyle = "block_ram" *) reg signed [31:0] buf_re [0:63];
-(* syn_ramstyle = "block_ram" *) reg signed [31:0] buf_im [0:63];
+// Butterfly đọc đồng thời 2 địa chỉ (a_idx, b_idx) VÀ ghi đồng thời 2 địa chỉ,
+// nên một BSRAM (SDPB: 1 đọc + 1 ghi) không đủ cổng → trước đây bị suy luận
+// thành thanh ghi LUT (regfile): phình CLS và đẩy a_idx_w[5]/b_idx_w[5] lên mạng
+// clock toàn cục (PRIMARY/LW 8/8) → nghẽn định tuyến (262 net không nối được).
+// Khắc phục: nhân đôi bộ đệm thành 2 bản sao giống hệt — cổng đọc 'a' đọc bản
+// _a, cổng đọc 'b' đọc bản _b — và tuần tự hoá 2 lần ghi qua 2 pha
+// (PH_WRITE/PH_WRITE2). Mỗi mảng khi đó chỉ còn 1 địa chỉ đọc + 1 địa chỉ ghi
+// mỗi chu kỳ ⇒ suy luận sạch thành SDPB (BSRAM còn dư nhiều: ~22%).
+(* syn_ramstyle = "block_ram" *) reg signed [31:0] buf_re_a [0:63];
+(* syn_ramstyle = "block_ram" *) reg signed [31:0] buf_re_b [0:63];
+(* syn_ramstyle = "block_ram" *) reg signed [31:0] buf_im_a [0:63];
+(* syn_ramstyle = "block_ram" *) reg signed [31:0] buf_im_b [0:63];
 
 // ── LUT đảo bit (đảo 6 bit cho N=64) ─────────────────────────────────────────
 function [5:0] bit_rev6;
@@ -58,15 +68,16 @@ reg [5:0] group_i;
 reg [5:0] pair_i;
 reg [5:0] a_idx_r, b_idx_r;
 reg signed [31:0] a_re_r, a_im_r, b_re_r, b_im_r;
-reg [1:0] bfly_phase;
+reg [2:0] bfly_phase;
 reg       copy_out;
 reg [5:0] copy_cnt;
 
-localparam [1:0]
-    PH_FETCH = 2'd0,
-    PH_MUL   = 2'd1,
-    PH_SUM   = 2'd2,
-    PH_WRITE = 2'd3;
+localparam [2:0]
+    PH_FETCH  = 3'd0,
+    PH_MUL    = 3'd1,
+    PH_SUM    = 3'd2,
+    PH_WRITE  = 3'd3,   // ghi nhánh a (cùng dữ liệu vào cả 2 bản sao)
+    PH_WRITE2 = 3'd4;   // ghi nhánh b + cập nhật bộ đếm butterfly
 
 // ── Tham số butterfly từ các bộ đếm nhỏ, rồi đưa vào thanh ghi bởi PH_FETCH ───
 wire [5:0] stride_w     = (6'd1 << stage);
@@ -91,7 +102,7 @@ reg signed [31:0] t_im_r;
 wire signed [63:0] t_re_full_w = p_bre_wre_r - p_bim_wim_r;
 wire signed [63:0] t_im_full_w = p_bre_wim_r + p_bim_wre_r;
 
-// ── Khối always hợp nhất — driver duy nhất cho buf_re, buf_im và mọi trạng thái ─
+// ── Khối always hợp nhất — driver duy nhất cho buf_re_a/_b, buf_im_a/_b và mọi trạng thái ─
 always @(posedge sys_clk) begin : fft_core
     if (!rst_n) begin
         load_cnt     <= 6'd0;
@@ -133,8 +144,10 @@ always @(posedge sys_clk) begin : fft_core
 
         // ── Pha nạp: lấp buf bằng đầu vào đã đảo bit ──────────────────────
         if (loading && x_valid) begin
-            buf_re[bit_rev6(load_cnt)] <= {{16{x_in[15]}}, x_in};
-            buf_im[bit_rev6(load_cnt)] <= 32'd0;
+            buf_re_a[bit_rev6(load_cnt)] <= {{16{x_in[15]}}, x_in};
+            buf_re_b[bit_rev6(load_cnt)] <= {{16{x_in[15]}}, x_in};
+            buf_im_a[bit_rev6(load_cnt)] <= 32'd0;
+            buf_im_b[bit_rev6(load_cnt)] <= 32'd0;
             if (load_cnt == 6'd63) begin
                 loading  <= 1'b0;
                 do_fft   <= 1'b1;
@@ -153,10 +166,10 @@ always @(posedge sys_clk) begin : fft_core
                     twiddle_addr <= tw_k_w[4:0];
                     a_idx_r      <= a_idx_w;
                     b_idx_r      <= b_idx_w;
-                    a_re_r       <= buf_re[a_idx_w];
-                    a_im_r       <= buf_im[a_idx_w];
-                    b_re_r       <= buf_re[b_idx_w];
-                    b_im_r       <= buf_im[b_idx_w];
+                    a_re_r       <= buf_re_a[a_idx_w];
+                    a_im_r       <= buf_im_a[a_idx_w];
+                    b_re_r       <= buf_re_b[b_idx_w];
+                    b_im_r       <= buf_im_b[b_idx_w];
                     bfly_phase   <= PH_MUL;
                 end
 
@@ -175,10 +188,20 @@ always @(posedge sys_clk) begin : fft_core
                 end
 
                 PH_WRITE: begin
-                    buf_re[a_idx_r] <= (a_re_r + t_re_r) >>> 1;
-                    buf_im[a_idx_r] <= (a_im_r + t_im_r) >>> 1;
-                    buf_re[b_idx_r] <= (a_re_r - t_re_r) >>> 1;
-                    buf_im[b_idx_r] <= (a_im_r - t_im_r) >>> 1;
+                    // Nhánh a → ghi cùng giá trị vào CẢ HAI bản sao (giữ đồng bộ)
+                    buf_re_a[a_idx_r] <= (a_re_r + t_re_r) >>> 1;
+                    buf_re_b[a_idx_r] <= (a_re_r + t_re_r) >>> 1;
+                    buf_im_a[a_idx_r] <= (a_im_r + t_im_r) >>> 1;
+                    buf_im_b[a_idx_r] <= (a_im_r + t_im_r) >>> 1;
+                    bfly_phase <= PH_WRITE2;
+                end
+
+                PH_WRITE2: begin
+                    // Nhánh b → ghi cùng giá trị vào CẢ HAI bản sao (giữ đồng bộ)
+                    buf_re_a[b_idx_r] <= (a_re_r - t_re_r) >>> 1;
+                    buf_re_b[b_idx_r] <= (a_re_r - t_re_r) >>> 1;
+                    buf_im_a[b_idx_r] <= (a_im_r - t_im_r) >>> 1;
+                    buf_im_b[b_idx_r] <= (a_im_r - t_im_r) >>> 1;
                     bfly_phase <= PH_FETCH;
 
                     if (last_pair_w) begin
@@ -204,8 +227,8 @@ always @(posedge sys_clk) begin : fft_core
 
         // ── Pha sao chép đầu ra: truyền buf ra re_out/im_out ──────────────
         if (copy_out) begin
-            re_out    <= buf_re[copy_cnt];
-            im_out    <= buf_im[copy_cnt];
+            re_out    <= buf_re_a[copy_cnt];
+            im_out    <= buf_im_a[copy_cnt];
             bin_valid <= 1'b1;
             if (copy_cnt == 6'd63) begin
                 copy_out   <= 1'b0;
