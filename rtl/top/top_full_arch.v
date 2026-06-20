@@ -1,9 +1,9 @@
-// top_full_arch.v - synthesis-oriented full biomedical architecture top.
+// top_full_arch.v - top kiến trúc y sinh đầy đủ, hướng tổng hợp.
 //
-// This top keeps the Tang Mega 138K board-level ports so GowinIDE constraints
-// still find their objects, but it is intended for architecture synthesis and
-// resource analysis. The real board bitstream should continue to use top.v
-// until the Gowin DDR3MI controller and flash/QSPI reader are wired in.
+// Top này giữ các cổng mức bo mạch Tang Mega 138K để các ràng buộc của GowinIDE
+// vẫn tìm thấy đối tượng, nhưng nó dành cho tổng hợp kiến trúc và
+// phân tích tài nguyên. Bitstream bo mạch thật nên tiếp tục dùng top.v
+// cho đến khi bộ điều khiển DDR3MI của Gowin và trình đọc flash/QSPI được đấu nối.
 module top_full_arch (
     input                  clk,
     input                  rst_n,
@@ -77,9 +77,9 @@ reset_sync u_rst_pix (
     .rst_sync_n (pixel_rst_n)
 );
 
-// A tiny synthetic flash stream keeps the weight-loader and DDR3 native write
-// boundary alive in synthesis. Replace this with QSPI/flash reader output for
-// a real board implementation.
+// Một luồng flash tổng hợp nhỏ giữ cho ranh giới giữa bộ nạp trọng số và lệnh ghi
+// native DDR3 còn sống trong tổng hợp. Thay nó bằng đầu ra trình đọc QSPI/flash cho
+// một triển khai bo mạch thật.
 reg [15:0] boot_delay;
 reg        boot_started;
 reg [7:0]  flash_counter;
@@ -293,8 +293,8 @@ DVI_TX_Top dvi_tx_i (
     .O_tmds_data_n(tmds_d_n_0)
 );
 
-// Safe idle values for the physical DDR3 bus. The native DDR debug path above
-// is preserved through the DVI pixel XOR, not by directly driving DDR3 pins.
+// Giá trị nghỉ an toàn cho bus DDR3 vật lý. Đường gỡ lỗi DDR native ở trên
+// được bảo toàn qua phép XOR điểm ảnh DVI, không phải bằng cách điều khiển trực tiếp chân DDR3.
 assign ddr_addr    = 15'd0;
 assign ddr_bank    = 3'd0;
 assign ddr_cs      = 1'b1;

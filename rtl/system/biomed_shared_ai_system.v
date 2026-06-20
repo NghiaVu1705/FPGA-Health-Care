@@ -1,9 +1,9 @@
-// biomed_shared_ai_system.v - time-multiplexed STFT/CNN biomedical AI core.
+// biomed_shared_ai_system.v - lõi AI y sinh STFT/CNN ghép kênh theo thời gian.
 //
-// This is the FPGA-fit direction after full 3-lane replication exceeded the
-// GW5AST-138B device. A single STFT and a single CNN engine are shared across
-// EEG, ECG, and EMG. Per-channel CNN weights are prefetched from DDR3 into a
-// 512-byte local cache before each channel is processed.
+// Đây là hướng vừa-khít-FPGA sau khi nhân bản đầy đủ 3 làn vượt quá
+// thiết bị GW5AST-138B. Một STFT và một bộ máy CNN duy nhất được dùng chung cho
+// EEG, ECG và EMG. Trọng số CNN theo từng kênh được prefetch từ DDR3 vào một
+// cache cục bộ 512 byte trước khi xử lý mỗi kênh.
 module biomed_shared_ai_system #(
     parameter integer NUM_CLASSES       = 6,
     parameter integer CLASS_BITS        = (NUM_CLASSES <= 2) ? 1 : $clog2(NUM_CLASSES),
@@ -16,9 +16,9 @@ module biomed_shared_ai_system #(
     parameter [7:0]  ECG_CRITICAL_CLASS = 8'd4,
     parameter [7:0]  EMG_NORMAL_CLASS  = 8'd0,
     parameter [7:0]  EMG_CRITICAL_CLASS = 8'd3,
-    parameter [4:0]  PIPELINE_FLUSH_CYCLES = 5'd15,   // ST_RESET hold time, was magic 15
-    parameter [9:0]  CNN_CACHE_LOAD_CYCLES = 10'd512, // cycles for cnn_top to load cache weights
-    parameter [23:0] CNN_INFER_TIMEOUT     = 24'd1_000_000  // ST_WAIT watchdog cycles (~10ms@100MHz)
+    parameter [4:0]  PIPELINE_FLUSH_CYCLES = 5'd15,   // thời gian giữ ST_RESET, trước đây là hằng số 15
+    parameter [9:0]  CNN_CACHE_LOAD_CYCLES = 10'd512, // số chu kỳ để cnn_top nạp trọng số cache
+    parameter [23:0] CNN_INFER_TIMEOUT     = 24'd1_000_000  // số chu kỳ watchdog của ST_WAIT (~10ms@100MHz)
 )(
     input                  sys_clk,
     input                  rst_n,
@@ -56,14 +56,14 @@ module biomed_shared_ai_system #(
     output                 ai_busy,
     output                 weights_ready,
     output                 weight_prefetch_error,
-    output reg             cnn_timeout_error,   // ST_WAIT watchdog tripped
+    output reg             cnn_timeout_error,   // watchdog của ST_WAIT đã kích hoạt
 
     output     [1:0]       final_class,
     output     [4:0]       triggered_sensors,
     output     [1:0]       confidence,
-    // Pulse asserted one cycle AFTER decision_layer has updated its outputs.
-    // Use this as the `src_update` for cdc_bus_handshake when bridging the
-    // decision bundle into the pixel_clk domain.
+    // Xung được bật một chu kỳ SAU khi decision_layer đã cập nhật đầu ra của nó.
+    // Dùng nó làm `src_update` cho cdc_bus_handshake khi cầu nối gói
+    // quyết định sang miền pixel_clk.
     output                 decision_update
 );
 
@@ -162,12 +162,12 @@ wire signed [15:0] selected_sample =
 
 wire sample_fire = collecting && selected_valid;
 
-// Synchronous pipeline clear for STFT/CNN cores.
-// NOTE: This is a deliberate functional clear (not a true async reset). It is
-// driven by the registered FSM state, so it is glitch-free. After DDR prefetch
-// and a short reset flush, ST_CNN_LOAD releases cnn_top while samples are still
-// held off, giving it time to copy the freshly prefetched cache into its local
-// weight registers before STFT begins streaming spectrogram bytes.
+// Xóa pipeline đồng bộ cho các lõi STFT/CNN.
+// LƯU Ý: Đây là phép xóa chức năng có chủ đích (không phải reset bất đồng bộ thật).
+// Nó được điều khiển bởi trạng thái FSM đã ghi vào thanh ghi, nên không có nhiễu. Sau khi
+// prefetch DDR và một lần flush reset ngắn, ST_CNN_LOAD nhả cnn_top trong khi mẫu vẫn
+// đang bị giữ lại, cho nó thời gian sao chép cache vừa prefetch vào các thanh ghi trọng số
+// cục bộ trước khi STFT bắt đầu truyền các byte spectrogram.
 wire pipe_rst_n = rst_n && (state != ST_PREFETCH) && (state != ST_RESET);
 
 wire [7:0] spec_shared;
@@ -189,10 +189,10 @@ stft_top u_shared_stft (
     .twiddle_rom_data(twiddle_rom_data)
 );
 
-// Disease-diagnosis CNN. CLASS_BITS becomes 3 for the official NUM_CLASSES=6,
-// so cnn_class / the per-channel class registers below are 3-bit wide. The
-// diagnostic classes are folded back to 3 severity levels by the
-// *_severity_map functions before reaching decision_layer (which is unchanged).
+// CNN chẩn đoán bệnh. CLASS_BITS thành 3 với NUM_CLASSES=6 chính thức,
+// nên cnn_class / các thanh ghi lớp theo từng kênh bên dưới rộng 3 bit. Các
+// lớp chẩn đoán được gộp lại về 3 mức nghiêm trọng bởi các hàm
+// *_severity_map trước khi tới decision_layer (vốn không đổi).
 wire [CLASS_BITS-1:0] cnn_class;
 wire       cnn_class_valid;
 
@@ -226,13 +226,13 @@ wire [CLASS_BITS-1:0] eeg_class_dec = (cnn_class_valid && channel_is_eeg) ? cnn_
 wire [CLASS_BITS-1:0] ecg_class_dec = (cnn_class_valid && channel_is_ecg) ? cnn_class : ecg_class_r;
 wire [CLASS_BITS-1:0] emg_class_dec = (cnn_class_valid && channel_is_emg) ? cnn_class : emg_class_r;
 
-// ── Severity mapper: 6 diagnostic classes -> 3 standardized severity levels ────
-// Levels: 0=Normal, 1=Abnormal, 2=Critical. decision_layer keeps its 2-bit
-// inputs and its majority-vote / escalation logic completely unchanged; only the
-// per-channel class codes are remapped here. Tables per project spec §3.2.
-//   EEG: 0->Normal; 2 (Tonic-Clonic)->Critical; {1,3,4,5}->Abnormal
-//   ECG: 0->Normal; 4 (Myocardial Ischemia)->Critical; {1,2,3,5}->Abnormal
-//   EMG: 0->Normal; 3 (ALS)->Critical; {1,2,4,5}->Abnormal
+// ── Bộ ánh xạ mức nghiêm trọng: 6 lớp chẩn đoán -> 3 mức nghiêm trọng chuẩn hóa ─
+// Các mức: 0=Bình thường, 1=Bất thường, 2=Nguy kịch. decision_layer giữ nguyên
+// các đầu vào 2 bit và logic biểu quyết đa số / leo thang hoàn toàn không đổi; chỉ
+// các mã lớp theo từng kênh được ánh xạ lại tại đây. Bảng theo đặc tả dự án §3.2.
+//   EEG: 0->Bình thường; 2 (Co cứng-co giật)->Nguy kịch; {1,3,4,5}->Bất thường
+//   ECG: 0->Bình thường; 4 (Thiếu máu cơ tim)->Nguy kịch; {1,2,3,5}->Bất thường
+//   EMG: 0->Bình thường; 3 (ALS)->Nguy kịch; {1,2,4,5}->Bất thường
 localparam [1:0] SEVERITY_NORMAL   = 2'd0;
 localparam [1:0] SEVERITY_ABNORMAL = 2'd1;
 localparam [1:0] SEVERITY_CRITICAL = 2'd2;
@@ -241,11 +241,11 @@ function [1:0] eeg_severity_map;
     input [CLASS_BITS-1:0] c;
     begin
         if (c == EEG_NORMAL_CLASS[CLASS_BITS-1:0])
-            eeg_severity_map = SEVERITY_NORMAL;    // Normal Rest Awake
+            eeg_severity_map = SEVERITY_NORMAL;    // Nghỉ ngơi thức tỉnh bình thường
         else if (c == EEG_CRITICAL_CLASS[CLASS_BITS-1:0])
-            eeg_severity_map = SEVERITY_CRITICAL;  // Tonic-Clonic Seizure
+            eeg_severity_map = SEVERITY_CRITICAL;  // Động kinh co cứng-co giật
         else
-            eeg_severity_map = SEVERITY_ABNORMAL;  // Absence / Alzheimer's / MDD / Insomnia
+            eeg_severity_map = SEVERITY_ABNORMAL;  // Vắng ý thức / Alzheimer / Trầm cảm / Mất ngủ
     end
 endfunction
 
@@ -253,11 +253,11 @@ function [1:0] ecg_severity_map;
     input [CLASS_BITS-1:0] c;
     begin
         if (c == ECG_NORMAL_CLASS[CLASS_BITS-1:0])
-            ecg_severity_map = SEVERITY_NORMAL;    // Normal Sinus Rhythm
+            ecg_severity_map = SEVERITY_NORMAL;    // Nhịp xoang bình thường
         else if (c == ECG_CRITICAL_CLASS[CLASS_BITS-1:0])
-            ecg_severity_map = SEVERITY_CRITICAL;  // Myocardial Ischemia
+            ecg_severity_map = SEVERITY_CRITICAL;  // Thiếu máu cơ tim
         else
-            ecg_severity_map = SEVERITY_ABNORMAL;  // AFib / VPC / LBBB / Atrial Flutter
+            ecg_severity_map = SEVERITY_ABNORMAL;  // Rung nhĩ / Ngoại tâm thu thất / Block nhánh trái / Cuồng nhĩ
     end
 endfunction
 
@@ -265,11 +265,11 @@ function [1:0] emg_severity_map;
     input [CLASS_BITS-1:0] c;
     begin
         if (c == EMG_NORMAL_CLASS[CLASS_BITS-1:0])
-            emg_severity_map = SEVERITY_NORMAL;    // Normal
+            emg_severity_map = SEVERITY_NORMAL;    // Bình thường
         else if (c == EMG_CRITICAL_CLASS[CLASS_BITS-1:0])
-            emg_severity_map = SEVERITY_CRITICAL;  // ALS
+            emg_severity_map = SEVERITY_CRITICAL;  // ALS (Xơ cứng teo cơ một bên)
         else
-            emg_severity_map = SEVERITY_ABNORMAL;  // Myasthenia / Dystrophy / Polymyositis / Neuropathy
+            emg_severity_map = SEVERITY_ABNORMAL;  // Nhược cơ / Loạn dưỡng cơ / Viêm đa cơ / Bệnh thần kinh
     end
 endfunction
 
@@ -277,9 +277,9 @@ wire [1:0] eeg_severity = eeg_severity_map(eeg_class_dec);
 wire [1:0] ecg_severity = ecg_severity_map(ecg_class_dec);
 wire [1:0] emg_severity = emg_severity_map(emg_class_dec);
 
-// `classes_valid_w` drives decision_layer; `decision_update` follows it by
-// 1 sys_clk cycle so it pulses while final_class/triggered_sensors/confidence
-// already hold their post-update values. External CDC bridges use this pulse.
+// `classes_valid_w` điều khiển decision_layer; `decision_update` theo sau nó
+// 1 chu kỳ sys_clk để nó phát xung khi final_class/triggered_sensors/confidence
+// đã giữ giá trị sau cập nhật. Các cầu nối CDC bên ngoài dùng xung này.
 wire classes_valid_w = cnn_class_valid | vitals_updated;
 reg  classes_valid_d;
 always @(posedge sys_clk or negedge rst_n) begin
@@ -367,9 +367,9 @@ always @(posedge sys_clk or negedge rst_n) begin
             end
 
             ST_WAIT: begin
-                // Watchdog: if CNN never reports class_valid within
-                // CNN_INFER_TIMEOUT cycles, raise cnn_timeout_error and
-                // continue with the previous class value to avoid deadlock.
+                // Watchdog: nếu CNN không bao giờ báo class_valid trong vòng
+                // CNN_INFER_TIMEOUT chu kỳ, bật cnn_timeout_error và
+                // tiếp tục với giá trị lớp trước đó để tránh deadlock (bế tắc).
                 if (cnn_class_valid) begin
                     case (channel)
                         CH_EEG: eeg_class_r <= cnn_class;

@@ -1,5 +1,5 @@
-// clock_divider.v — power-of-2 clock divider
-// DIV must be a power of 2 >= 2
+// clock_divider.v — bộ chia clock theo lũy thừa của 2
+// DIV phải là lũy thừa của 2 và >= 2
 module clock_divider #(
     parameter DIV = 2
 )(

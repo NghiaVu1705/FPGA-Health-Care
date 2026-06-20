@@ -1,9 +1,9 @@
-// biomed_full_system.v - technology-neutral full instance integration wrapper.
+// biomed_full_system.v - wrapper tích hợp đầy đủ, trung lập công nghệ.
 //
-// This wrapper intentionally instantiates every owned project-facing RTL block
-// so verification can prove the full architecture elaborates as a system. It is
-// not the FPGA fit-mode shell; Gowin synthesis should continue to use
-// gowin_fpga/src/top.v for bring-up until the STFT/CNN buffers are reworked.
+// Wrapper này cố ý khởi tạo mọi khối RTL của dự án
+// để kiểm chứng có thể chứng minh toàn bộ kiến trúc elaborate được như một hệ thống. Nó
+// không phải lớp vỏ chế độ fit FPGA; tổng hợp Gowin nên tiếp tục dùng
+// gowin_fpga/src/top.v cho việc bring-up cho đến khi các bộ đệm STFT/CNN được làm lại.
 module biomed_full_system (
     input                  sys_clk,
     input                  pixel_clk,
@@ -90,11 +90,11 @@ clock_divider #(.DIV(4)) u_clock_divider (
 );
 
 // ---------------------------------------------------------------------------
-// Sensor ingress
+// Thu nhận tín hiệu cảm biến
 // ---------------------------------------------------------------------------
 wire [15:0] emg_sample;
 wire        emg_valid;
-// Debug UART transmitter FSM interface wires/regs
+// Các wire/reg giao diện FSM của bộ phát UART gỡ lỗi
 reg [7:0] tx_data_r;
 reg       tx_valid_r;
 wire      tx_ready_w;
@@ -149,7 +149,7 @@ wire        eeg_valid  = spi_valid && (spi_channel == 2'd0);
 wire        ecg_valid  = spi_valid && (spi_channel == 2'd1);
 
 // ---------------------------------------------------------------------------
-// STFT lanes
+// Các làn STFT
 // ---------------------------------------------------------------------------
 wire [5:0]  hamming_addr_eeg, hamming_addr_ecg, hamming_addr_emg;
 wire [4:0]  twiddle_addr_eeg, twiddle_addr_ecg, twiddle_addr_emg;
@@ -214,8 +214,8 @@ wire spec_eeg_start = spec_eeg_valid & ~spec_eeg_valid_d;
 wire spec_ecg_start = spec_ecg_valid & ~spec_ecg_valid_d;
 wire spec_emg_start = spec_emg_valid & ~spec_emg_valid_d;
 
-// Standalone STFT helper modules kept instantiated for full architecture
-// elaboration, because stft_top currently implements these steps inline.
+// Các module phụ trợ STFT độc lập được giữ khởi tạo để elaborate đầy đủ
+// kiến trúc, vì stft_top hiện triển khai các bước này nội tuyến.
 wire signed [15:0] helper_windowed;
 wire               helper_windowed_valid;
 wire [5:0]         helper_hamming_addr;
@@ -249,7 +249,7 @@ magnitude_calc u_magnitude_calc_helper (
 );
 
 // ---------------------------------------------------------------------------
-// CNN lanes
+// Các làn CNN
 // ---------------------------------------------------------------------------
 wire [8:0] cnn_addr_eeg, cnn_addr_ecg, cnn_addr_emg;
 wire [1:0] cnn_eeg_class, cnn_ecg_class, cnn_emg_class;
@@ -291,7 +291,7 @@ mac_unit u_mac_unit_helper (
 );
 
 // ---------------------------------------------------------------------------
-// Threshold and decision fusion
+// Ngưỡng và hợp nhất quyết định
 // ---------------------------------------------------------------------------
 (* syn_keep = 1 *) wire [1:0] spo2_class;
 (* syn_keep = 1 *) wire [1:0] temp_class;
@@ -320,7 +320,7 @@ decision_layer u_decision (
     .confidence       (confidence)
 );
 
-// Status bus and debug UART transmission FSM
+// Bus trạng thái và FSM truyền UART gỡ lỗi
 reg [24:0] status_bus_sys;
 reg        status_toggle_sys;
 
@@ -402,7 +402,7 @@ always @(posedge sys_clk or negedge sys_rst_n) begin
 end
 
 // ---------------------------------------------------------------------------
-// Flash image to DDR3 weight boot path
+// Đường nạp trọng số từ ảnh flash vào DDR3
 // ---------------------------------------------------------------------------
 wire        weight_header_valid_unused;
 wire        weight_entry_valid_unused;
@@ -453,7 +453,7 @@ weight_boot_loader u_weight_boot_loader (
 );
 
 // ---------------------------------------------------------------------------
-// Display path and text helper
+// Đường hiển thị và module phụ trợ văn bản
 // ---------------------------------------------------------------------------
 wire [11:0] hcount;
 wire [11:0] vcount;

@@ -1,23 +1,23 @@
 `default_nettype none
-// sync_2ff.v - two-flip-flop single-bit synchronizer (CDC).
+// sync_2ff.v - bộ đồng bộ đơn bit dùng hai flip-flop (CDC).
 //
-// Use this for individual asynchronous bits whose value is stable for many
-// destination-clock periods. Do NOT use bit-wise instances on a multi-bit
-// bus that must update atomically — use `cdc_bus_handshake.v` for that
-// case.
+// Dùng cho các bit bất đồng bộ riêng lẻ có giá trị ổn định qua nhiều chu kỳ
+// clock đích. KHÔNG dùng nhiều thực thể theo từng bit cho một bus nhiều bit cần
+// cập nhật nguyên tử (atomic) — hãy dùng `cdc_bus_handshake.v` cho trường hợp
+// đó.
 //
-// Implementation notes:
-//   - `dst_clk` registers receive the asynchronous input through STAGES FFs.
-//     STAGES=2 is the textbook minimum; STAGES=3 is more conservative for
-//     fast pixel_clk / sys_clk domains on Gowin.
-//   - Synthesis attributes (Gowin-specific) tag the chain so optimisation
-//     does not merge or move the FFs:
+// Ghi chú triển khai:
+//   - Các thanh ghi theo `dst_clk` nhận đầu vào bất đồng bộ qua STAGES flip-flop.
+//     STAGES=2 là mức tối thiểu theo sách giáo khoa; STAGES=3 thận trọng hơn cho
+//     các miền pixel_clk / sys_clk tốc độ cao trên Gowin.
+//   - Các thuộc tính tổng hợp (riêng cho Gowin) đánh dấu chuỗi này để tối ưu hóa
+//     không gộp hay di chuyển các flip-flop:
 //       syn_keep, syn_preserve, syn_srlstyle="registers".
-//   - The reset is async-assert / sync-release on `dst_clk`, matching the
-//     project's overall reset convention.
+//   - Reset theo kiểu bật bất đồng bộ / nhả đồng bộ trên `dst_clk`, khớp với
+//     quy ước reset chung của toàn dự án.
 //
-// MTBF: with 2 stages, sub-femtosecond unreliability for tau<<period at
-// modern speeds. See standard CDC literature.
+// MTBF: với 2 tầng, độ thiếu tin cậy dưới mức femto-giây khi tau<<chu kỳ ở các
+// tốc độ hiện đại. Xem tài liệu CDC tiêu chuẩn.
 module sync_2ff #(
     parameter STAGES = 2,
     parameter INIT_VALUE = 1'b0

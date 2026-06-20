@@ -1,9 +1,9 @@
-// ddr3_burst_writer.v - Packs an 8-bit stream into Gowin DDR3 256-bit writes.
+// ddr3_burst_writer.v - Đóng gói luồng 8 bit thành các lần ghi DDR3 256 bit của Gowin.
 //
-// The Gowin DDR3MI native port exposes 256-bit write data. This block accepts
-// a byte stream, emits one command/data beat per 32 bytes, and uses the mask on
-// the final partial beat. CMD_WRITE defaults to 3'b000, matching the existing
-// Gowin video-frame-buffer wrapper convention in this project.
+// Cổng native DDR3MI của Gowin để lộ dữ liệu ghi 256 bit. Khối này nhận
+// một luồng byte, phát ra một nhịp lệnh/dữ liệu cho mỗi 32 byte, và dùng mask ở
+// nhịp dở dang cuối cùng. CMD_WRITE mặc định là 3'b000, khớp với quy ước wrapper
+// bộ đệm khung video Gowin hiện có trong dự án này.
 module ddr3_burst_writer #(
     parameter CMD_WRITE = 3'b000
 )(

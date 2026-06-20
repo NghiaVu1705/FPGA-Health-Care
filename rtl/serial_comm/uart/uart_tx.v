@@ -1,18 +1,18 @@
 (* syn_noprune = 1 *) module uart_tx
 #(
-	parameter CLK_FRE = 50,      //clock frequency(Mhz)
-	parameter BAUD_RATE = 115200 //serial baud rate
+	parameter CLK_FRE = 50,      //tần số clock (Mhz)
+	parameter BAUD_RATE = 115200 //tốc độ baud nối tiếp
 )
 (
-	input                        clk,              //clock input
-	input                        rst_n,            //asynchronous reset input, low active 
-	input[7:0]                   tx_data,          //data to send
-	input                        tx_data_valid,    //data to be sent is valid
-	output                       tx_data_ready,    //send ready
-	output                       tx_pin,           //serial data output
+	input                        clk,              //đầu vào clock
+	input                        rst_n,            //đầu vào reset bất đồng bộ, tích cực mức thấp
+	input[7:0]                   tx_data,          //dữ liệu cần gửi
+	input                        tx_data_valid,    //dữ liệu cần gửi hợp lệ
+	output                       tx_data_ready,    //sẵn sàng gửi
+	output                       tx_pin,           //đầu ra dữ liệu nối tiếp
     output                       tx_busy
 );
-//calculates the clock cycle for baud rate 
+//tính số chu kỳ clock cho tốc độ baud
 localparam              integer CYCLE = CLK_FRE * 1000000 / BAUD_RATE;
 localparam              integer CNT_W = (CYCLE <= 1) ? 1 : $clog2(CYCLE);
 localparam [CNT_W-1:0]          CYCLE_MAX = CYCLE-1;
@@ -21,18 +21,18 @@ localparam [CNT_W-1:0]          CYCLE_MAX = CYCLE-1;
 //  if (CYCLE < 2) $error("CYCLE too small: check CLK_FRE and BAUD_RATE");
 //end
 
-//state machine code
+//mã máy trạng thái
 localparam [2:0]                 S_IDLE       = 3'd1;
-localparam [2:0]                 S_START      = 3'd2;//start bit
-localparam [2:0]                 S_SEND_BYTE  = 3'd3;//data bits
-localparam [2:0]                 S_STOP       = 3'd4;//stop bit
+localparam [2:0]                 S_START      = 3'd2;//bit khởi đầu (start bit)
+localparam [2:0]                 S_SEND_BYTE  = 3'd3;//các bit dữ liệu
+localparam [2:0]                 S_STOP       = 3'd4;//bit kết thúc (stop bit)
 
-reg[CNT_W-1:0]                   cycle_cnt;     //baud counter
+reg[CNT_W-1:0]                   cycle_cnt;     //bộ đếm baud
 reg[2:0]                         state;
 reg[2:0]                         next_state;
-reg[2:0]                         bit_cnt;       //bit counter
-reg[7:0]                         tx_data_latch; //latch data to send
-reg                              tx_reg;        //serial data output
+reg[2:0]                         bit_cnt;       //bộ đếm bit
+reg[7:0]                         tx_data_latch; //chốt dữ liệu cần gửi
+reg                              tx_reg;        //đầu ra dữ liệu nối tiếp
 
 wire   bit_tick = (cycle_cnt == CYCLE_MAX);
 wire   accept = (state == S_IDLE) && tx_data_valid;

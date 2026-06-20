@@ -1,8 +1,8 @@
-// uart_top.v — UART wrapper for healthcare system
-// Ch0 (RX): EMG samples @ 1000 Hz, 16-bit little-endian frames
-// Ch1 (TX): Debug console output @ 115200 baud
+// uart_top.v — lớp bọc UART cho hệ thống y tế
+// Ch0 (RX): mẫu EMG @ 1000 Hz, khung 16 bit kiểu little-endian (đầu nhỏ)
+// Ch1 (TX): đầu ra console gỡ lỗi @ 115200 baud
 //
-// Frame format (EMG RX): {0xAA, data_hi, data_lo, checksum}
+// Định dạng khung (EMG RX): {0xAA, data_hi, data_lo, checksum}
 //   checksum = data_hi ^ data_lo
 module uart_top #(
     parameter CLK_FRE  = 100,      // MHz
@@ -11,21 +11,21 @@ module uart_top #(
     input  sys_clk,
     input  rst_n,
 
-    // Physical pins
+    // Các chân vật lý
     input  uart_rx,
     output uart_tx,
 
-    // EMG sample output (to FIFO)
+    // Đầu ra mẫu EMG (tới FIFO)
     output reg [15:0] emg_sample,
     output reg        emg_valid,
 
-    // Debug TX input
+    // Đầu vào TX gỡ lỗi
     input  [7:0]  dbg_data,
     input         dbg_valid,
     output        dbg_ready
 );
 
-// ── RX path ──────────────────────────────────────────────────────────────────
+// ── Đường RX ─────────────────────────────────────────────────────────────────
 
 wire [7:0] rx_data;
 wire       rx_valid;
@@ -43,14 +43,14 @@ uart_rx #(
     .rx_pin       (uart_rx)
 );
 
-// Frame reassembler: 0xAA | hi | lo | checksum → int16
+// Bộ ráp lại khung: 0xAA | hi | lo | checksum → int16
 localparam [1:0] F_SYNC = 2'd0, F_HI = 2'd1, F_LO = 2'd2, F_CHK = 2'd3;
 
 reg [1:0] frame_st;
 reg [7:0] byte_hi;
 reg [7:0] byte_lo_r;
 
-assign rx_ready = 1'b1;  // always accept bytes
+assign rx_ready = 1'b1;  // luôn chấp nhận byte
 
 always @(posedge sys_clk or negedge rst_n) begin
     if (!rst_n) begin
@@ -76,7 +76,7 @@ always @(posedge sys_clk or negedge rst_n) begin
     end
 end
 
-// ── TX path ──────────────────────────────────────────────────────────────────
+// ── Đường TX ─────────────────────────────────────────────────────────────────
 
 wire tx_busy_unused;
 

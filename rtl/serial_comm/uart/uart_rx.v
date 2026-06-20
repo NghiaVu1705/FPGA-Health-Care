@@ -4,18 +4,18 @@ module uart_rx #(
 )(
 	input                        clk,              
 	input                        rst_n,             
-	output reg[7:0]              rx_data,          //received serial data
-	output reg                   rx_data_valid,    //received serial data is valid
-	input                        rx_data_ready,    //data receiver module ready
-	input                        rx_pin            //serial data input
+	output reg[7:0]              rx_data,          //dữ liệu nối tiếp đã nhận
+	output reg                   rx_data_valid,    //dữ liệu nối tiếp đã nhận hợp lệ
+	input                        rx_data_ready,    //module nhận dữ liệu đã sẵn sàng
+	input                        rx_pin            //đầu vào dữ liệu nối tiếp
 );
 localparam integer CYCLE = CLK_FRE * 1000000 / BAUD_RATE;
 localparam integer CNT_W = (CYCLE <= 1) ? 1 : $clog2(CYCLE+1);
 
 localparam [2:0] S_IDLE     = 3'd1;
-localparam [2:0] S_START    = 3'd2;					//start bit
-localparam [2:0] S_REC_BYTE = 3'd3;					//data bits
-localparam [2:0] S_STOP     = 3'd4;					//stop bit
+localparam [2:0] S_START    = 3'd2;					//bit khởi đầu (start bit)
+localparam [2:0] S_REC_BYTE = 3'd3;					//các bit dữ liệu
+localparam [2:0] S_STOP     = 3'd4;					//bit kết thúc (stop bit)
 localparam [2:0] S_DATA     = 3'd5;
 
 reg [2:0]  		state, next_state;
@@ -24,11 +24,11 @@ wire       		rx_negedge;
 
 reg [7:0]  		rx_bits;							
 reg [CNT_W-1:0] cycle_cnt;							
-reg [2:0]  		bit_cnt;							//bit counter
+reg [2:0]  		bit_cnt;							//bộ đếm bit
 
 assign rx_negedge = rx_d1 & ~rx_d0;
 
-// 2-FF sync
+// đồng bộ 2-FF
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n) begin
         rx_d0 <= 1'b1;
@@ -39,13 +39,13 @@ always @(posedge clk or negedge rst_n) begin
     end
 end
 
-// state reg
+// thanh ghi trạng thái
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n) state <= S_IDLE;
     else       state <= next_state;
 end
 
-// next state
+// trạng thái kế tiếp
 always @(*) begin
     case(state)
         S_IDLE: begin
@@ -53,11 +53,11 @@ always @(*) begin
             else           next_state = S_IDLE;
         end
 
-        // start bit: confirm at half-bit
+        // bit khởi đầu: xác nhận tại nửa-bit
         S_START: begin
             if(cycle_cnt == (CYCLE/2 - 1)) begin
-                if(rx_d0 == 1'b0) next_state = S_REC_BYTE; // valid start
-                else              next_state = S_IDLE;     // glitch
+                if(rx_d0 == 1'b0) next_state = S_REC_BYTE; // khởi đầu hợp lệ
+                else              next_state = S_IDLE;     // nhiễu (glitch)
             end else begin
                 next_state = S_START;
             end
@@ -70,11 +70,11 @@ always @(*) begin
                 next_state = S_REC_BYTE;
         end
 
-        // stop bit: sample mid-bit; require '1'
+        // bit kết thúc: lấy mẫu giữa-bit; yêu cầu phải là '1'
         S_STOP: begin
             if(cycle_cnt == (CYCLE - 1)) begin
-                if(rx_d0 == 1'b1) next_state = S_DATA;  // good stop
-                else              next_state = S_IDLE;  // framing error -> drop
+                if(rx_d0 == 1'b1) next_state = S_DATA;  // bit kết thúc tốt
+                else              next_state = S_IDLE;  // lỗi khung (framing) -> bỏ
             end else begin
                 next_state = S_STOP;
             end
@@ -89,7 +89,7 @@ always @(*) begin
     endcase
 end
 
-// cycle counter
+// bộ đếm chu kỳ
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n) begin
         cycle_cnt <= {CNT_W{1'b0}};
@@ -97,12 +97,12 @@ always @(posedge clk or negedge rst_n) begin
         if(next_state != state) begin
             cycle_cnt <= {CNT_W{1'b0}};
         end else begin
-            // count within state
+            // đếm trong phạm vi trạng thái
             if(state == S_REC_BYTE) begin
                 if(cycle_cnt == (CYCLE-1)) cycle_cnt <= {CNT_W{1'b0}};
                 else                       cycle_cnt <= cycle_cnt + 1'b1;
             end else begin
-                // for START/STOP we only need up to half-bit
+                // với START/STOP ta chỉ cần đếm tới nửa-bit
                 if(cycle_cnt == (CYCLE-1)) cycle_cnt <= {CNT_W{1'b0}};
                 else                       cycle_cnt <= cycle_cnt + 1'b1;
             end
@@ -110,7 +110,7 @@ always @(posedge clk or negedge rst_n) begin
     end
 end
 
-// bit counter
+// bộ đếm bit
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n) begin
         bit_cnt <= 3'd0;
@@ -121,7 +121,7 @@ always @(posedge clk or negedge rst_n) begin
     end
 end
 
-// sample bits at mid-bit
+// lấy mẫu các bit tại giữa-bit
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n) begin
         rx_bits <= 8'd0;
@@ -131,7 +131,7 @@ always @(posedge clk or negedge rst_n) begin
     end
 end
 
-// latch to output on entering DATA (only when stop bit good)
+// chốt ra đầu ra khi vào DATA (chỉ khi bit kết thúc tốt)
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n) begin
         rx_data <= 8'd0;
@@ -140,7 +140,7 @@ always @(posedge clk or negedge rst_n) begin
     end
 end
 
-// valid handshake
+// bắt tay valid
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n) begin
         rx_data_valid <= 1'b0;

@@ -1,6 +1,6 @@
 // cnn_top.v ↔ cnn_top.py
-// CNN inference orchestrator. Loads INT8 weights from BSRAM at startup,
-// then runs the full pipeline on each 32x32 spectrogram.
+// Bộ điều phối suy luận CNN. Nạp trọng số INT8 từ BSRAM khi khởi động,
+// sau đó chạy toàn bộ pipeline trên mỗi spectrogram 32x32.
 module cnn_top #(
     parameter NUM_CLASSES = 3,
     parameter CLASS_BITS = (NUM_CLASSES <= 2) ? 1 : $clog2(NUM_CLASSES)
@@ -8,21 +8,21 @@ module cnn_top #(
     input  sys_clk,
     input  rst_n,
 
-    // Spectrogram input: 32x32 UINT8, row-major, one byte per cycle
+    // Đầu vào spectrogram: 32x32 UINT8, theo thứ tự hàng (row-major), một byte mỗi chu kỳ
     input  [7:0]  spec_in,
     input         spec_valid,
     input         spec_start,
 
-    // Classification output
+    // Đầu ra phân loại
     output reg [CLASS_BITS-1:0] class_out,
     output reg       class_valid,
 
-    // BSRAM read port (512x8, 1-cycle read latency)
+    // Cổng đọc BSRAM (512x8, độ trễ đọc 1 chu kỳ)
     output reg [8:0] bsram_addr,
     input      [7:0] bsram_data
 );
 
-// ── Weight/bias registers (loaded from BSRAM at startup) ─────────────────────
+// ── Thanh ghi trọng số/bias (nạp từ BSRAM khi khởi động) ─────────────────────
 reg signed [7:0]  dw1_w [0:8];
 reg signed [7:0]  pw1_w [0:7];
 reg signed [7:0]  dw2_w [0:71];
@@ -40,12 +40,12 @@ localparam integer FC_W_BYTES = NUM_CLASSES * 16;
 localparam integer OFF_BIAS = OFF_FC_W + FC_W_BYTES;
 localparam integer FIXED_BIAS_COUNT = 33;
 localparam integer OFF_SHIFT = OFF_BIAS + (FIXED_BIAS_COUNT + NUM_CLASSES) * 4;
-// +1 vs the byte count: the weight cache read is now REGISTERED (BSRAM), so the
-// load path is 2-cycle (registered bsram_addr + registered cache read). load_addr
-// must reach OFF_SHIFT+6 for the last byte (shift_fc) since bsram_prev=load_addr-2.
+// +1 so với số byte: việc đọc cache trọng số nay ĐÃ ĐƯA VÀO THANH GHI (BSRAM), nên
+// đường nạp mất 2 chu kỳ (bsram_addr có thanh ghi + đọc cache có thanh ghi). load_addr
+// phải đạt OFF_SHIFT+6 cho byte cuối (shift_fc) vì bsram_prev=load_addr-2.
 localparam integer LOAD_LAST = OFF_SHIFT + 5;
 
-// ── Top-level FSM ────────────────────────────────────────────────────────────
+// ── Máy trạng thái (FSM) mức trên cùng ───────────────────────────────────────
 localparam [2:0]
     ST_LOAD   = 3'd0,
     ST_READY  = 3'd1,
@@ -57,10 +57,10 @@ reg [2:0] state;
 reg [8:0] load_addr;
 reg [9:0] spec_cnt;
 
-// Spectrogram and activation buffers
+// Bộ đệm spectrogram và kích hoạt (activation)
 (* syn_ramstyle = "block_ram" *) reg [7:0] spec_buf [0:1023];
 
-// Load FSM temporaries
+// Các biến tạm của FSM nạp (load)
 integer    cnn_i;
 reg [8:0]  bsram_prev;
 reg [8:0]  bias_base;
@@ -69,7 +69,7 @@ reg [5:0]  bias_idx;
 reg [1:0]  b_byte;
 reg [31:0] b_asm;
 
-// ── Packed weight/bias buses for Verilog-2001 submodule ports ────────────────
+// ── Bus trọng số/bias đóng gói cho cổng module con kiểu Verilog-2001 ──────────
 wire [71:0]   dw1_w_flat;
 wire [31:0]   dw1_b_flat;
 wire [63:0]   pw1_w_flat;
@@ -112,7 +112,7 @@ generate
     end
 endgenerate
 
-// ── Inference stage controls ─────────────────────────────────────────────────
+// ── Điều khiển các tầng suy luận ─────────────────────────────────────────────
 reg        infer_done;
 reg [3:0]  infer_stage;
 reg        stage_fs;
@@ -127,7 +127,7 @@ reg       mp2_seen;
 wire      mp1_frame_start_w;
 wire      mp2_frame_start_w;
 
-// ── DW1 → ReLU → PW1 → ReLU → MaxPool1 ──────────────────────────────────────
+// ── DW1 → ReLU → PW1 → ReLU → MaxPool1 (khối 1) ─────────────────────────────
 wire [15:0] dw1_y;
 wire        dw1_v;
 conv2d_engine #(
@@ -176,7 +176,7 @@ maxpool_unit #(.C(8), .H(32), .W(32)) u_mp1 (
 
 assign mp1_frame_start_w = mp1_v && !mp1_seen;
 
-// ── DW2 → ReLU → PW2 → ReLU → MaxPool2 ──────────────────────────────────────
+// ── DW2 → ReLU → PW2 → ReLU → MaxPool2 (khối 2) ─────────────────────────────
 wire [127:0] dw2_y;
 wire         dw2_v;
 conv2d_engine #(
@@ -231,7 +231,7 @@ maxpool_unit #(.C(16), .H(16), .W(16)) u_mp2 (
 
 assign mp2_frame_start_w = mp2_v && !mp2_seen;
 
-// ── GlobalMaxPool and FC ─────────────────────────────────────────────────────
+// ── GlobalMaxPool và FC ──────────────────────────────────────────────────────
 wire [255:0] gap_y_w;
 wire         gap_v_w;
 global_maxpool_unit #(.C(16), .H(8), .W(8)) u_gap (
@@ -250,7 +250,7 @@ fc_layer #(.C_IN(16), .C_OUT(NUM_CLASSES), .CLASS_BITS(CLASS_BITS)) u_fc (
     .logits(fc_logits_w), .logits_valid(fc_lv), .class_out(fc_class_w)
 );
 
-// ── Load FSM ─────────────────────────────────────────────────────────────────
+// ── FSM nạp (load) ───────────────────────────────────────────────────────────
 always @(posedge sys_clk or negedge rst_n) begin
     if (!rst_n) begin
         state       <= ST_LOAD;
@@ -266,8 +266,8 @@ always @(posedge sys_clk or negedge rst_n) begin
         case (state)
             ST_LOAD: begin
                 bsram_addr <= load_addr;
-                // Registered cache read => 2-cycle latency: bsram_data this cycle
-                // is cache[load_addr-2]. (Was load_addr-1 for the old async cache.)
+                // Đọc cache có thanh ghi => độ trễ 2 chu kỳ: bsram_data ở chu kỳ này
+                // là cache[load_addr-2]. (Trước đây là load_addr-1 với cache bất đồng bộ cũ.)
                 if (load_addr > 9'd1) begin
                     bsram_prev = load_addr - 9'd2;
                     if      (bsram_prev <= 9'd8)                               dw1_w[bsram_prev[3:0]]             <= $signed(bsram_data);
@@ -355,7 +355,7 @@ always @(posedge sys_clk or negedge rst_n) begin
     end
 end
 
-// ── Inference sub-FSM ────────────────────────────────────────────────────────
+// ── FSM con cho suy luận ─────────────────────────────────────────────────────
 always @(posedge sys_clk or negedge rst_n) begin
     if (!rst_n) begin
         infer_done <= 1'b0;

@@ -7,7 +7,6 @@ self-contained under `rtl/`.
 | File | IP |
 |------|----|
 | `gowin_pll_sys.v`, `gowin_pll/TMDS_PLL_60HZ*.v`, `gowin_pll/gowin_pll_400M*.v`, `pll_init.v` | PLL (sys clock, HDMI/TMDS, DDR 400M) |
-| `gowin_fifo_async.v` | Async CDC FIFO 256×16 |
 | `gowin_bsram_hamming.v`, `gowin_bsram_twiddle.v`, `gowin_bsram_cnn_{eeg,ecg,emg}.v` | BSRAM ROM (Hamming/Twiddle/CNN weights) |
 | `ddr3_memory_interface/DDR3MI_400M.v` | DDR3 Memory Interface (encrypted) |
 | `dvi_tx/DVI_TX_Top.v` | DVI/HDMI TX (encrypted) |

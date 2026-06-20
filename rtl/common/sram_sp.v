@@ -1,16 +1,18 @@
 `default_nettype none
-// sram_sp.v - generic single-port synchronous SRAM wrapper.
+// sram_sp.v - lớp bọc (wrapper) SRAM đồng bộ đơn cổng tổng quát.
 //
-// Technology-neutral interface used by both FPGA and ASIC flows:
-//   - On FPGA: synthesizes to BSRAM/LUTRAM via inference; `syn_ramstyle`
-//     attribute exposed via parameter `RAM_STYLE`.
-//   - On ASIC: swap with a memory-compiler macro behind this same interface.
+// Giao diện trung lập về công nghệ, dùng cho cả luồng FPGA và ASIC:
+//   - Trên FPGA: được tổng hợp thành BSRAM/LUTRAM qua suy luận (inference); thuộc
+//     tính `syn_ramstyle` được lộ ra qua tham số `RAM_STYLE`.
+//   - Trên ASIC: thay bằng macro của trình biên dịch bộ nhớ (memory-compiler) sau
+//     cùng giao diện này.
 //
-// Single port: one read OR one write per cycle. Read latency = 1 cycle
-// (rdata stable on the cycle AFTER the address is presented).
+// Đơn cổng: một thao tác đọc HOẶC một thao tác ghi mỗi chu kỳ. Độ trễ đọc = 1 chu
+// kỳ (rdata ổn định ở chu kỳ NGAY SAU khi địa chỉ được đưa vào).
 //
-// No asynchronous reset on the memory array (BSRAM cells have no reset);
-// rdata register is also not reset for portability across vendor BSRAMs.
+// Không có reset bất đồng bộ trên mảng bộ nhớ (ô BSRAM không có reset);
+// thanh ghi rdata cũng không được reset để dễ chuyển đổi giữa các BSRAM của các nhà
+// cung cấp khác nhau.
 module sram_sp #(
     parameter DEPTH     = 512,
     parameter DATA_W    = 8,

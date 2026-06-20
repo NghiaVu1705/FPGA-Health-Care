@@ -1,34 +1,34 @@
 `default_nettype none
-// conv2d_engine.v - streaming 2D convolution with pipelined MAC.
+// conv2d_engine.v - tích chập 2D dạng luồng với MAC được pipeline.
 //
-// Phase 5b: split the 9-input add-tree into a partial-sum stage + a final-sum
-// stage. Critical path in Phase 5 ran from a DSP18 multiplier output through
-// a 9-deep adder chain into the accumulator register (slack -22.4 ns at 100
-// MHz). The new pipeline now has a 5-stage layout (DW) / 5-stage (PW):
+// Pha 5b: tách cây cộng 9 đầu vào thành một tầng tổng thành phần + một tầng
+// tổng cuối. Đường tới hạn (critical path) trong Pha 5 chạy từ đầu ra bộ nhân
+// DSP18 qua một chuỗi cộng sâu 9 tầng vào thanh ghi tích lũy (slack -22.4 ns ở
+// 100 MHz). Pipeline mới nay có bố cục 5 tầng (DW) / 5 tầng (PW):
 //
-//   STG0  window assembly (DW) / capture x_in (PW)
-//   STG1  9 (DW) / C_IN*C_OUT (PW) multiplications, registered as s2_prod
-//   STG2  partial sums: 3 groups of <=3 products → s2a_part[*][0..2]
-//   STG3  final sum + bias → s3_acc
-//   STG4  arithmetic shift right + saturate → y_out, y_valid
+//   STG0  lắp ráp cửa sổ (DW) / chốt x_in (PW)
+//   STG1  9 (DW) / C_IN*C_OUT (PW) phép nhân, đưa vào thanh ghi s2_prod
+//   STG2  tổng thành phần: 3 nhóm <=3 tích → s2a_part[*][0..2]
+//   STG3  tổng cuối + bias → s3_acc
+//   STG4  dịch phải số học + bão hòa → y_out, y_valid
 //
-// Per-stage combinational depth (estimated):
-//   STG2 partial sum:  2 adder levels (3-input sum)
-//   STG3 final sum:    2 adder levels (4-input sum incl. bias)
+// Độ sâu tổ hợp mỗi tầng (ước lượng):
+//   STG2 tổng thành phần:  2 mức cộng (tổng 3 đầu vào)
+//   STG3 tổng cuối:        2 mức cộng (tổng 4 đầu vào kể cả bias)
 //
-// Compared with the previous single-stage 9-input add-tree (4 adder levels)
-// plus a 1-level bias add, this split halves the worst-case combinational
-// chain feeding the s3_acc register.
+// So với cây cộng 9 đầu vào một tầng trước đây (4 mức cộng)
+// cộng thêm một mức cộng bias, cách tách này giảm một nửa chuỗi tổ hợp tệ nhất
+// dẫn vào thanh ghi s3_acc.
 //
-// Interface unchanged: same ports, same parameter list, same total H*W
-// y_valid pulses per frame_start. Total pipeline latency is now 1 cycle
-// longer than the Phase 5 design; cnn_top.v tolerates because its timeout
-// is generous and it only watches counts.
+// Giao diện không đổi: cùng cổng, cùng danh sách tham số, cùng tổng số xung
+// y_valid H*W mỗi frame_start. Tổng độ trễ pipeline nay dài hơn thiết kế Pha 5
+// 1 chu kỳ; cnn_top.v chấp nhận được vì timeout của nó rộng rãi và chỉ theo dõi
+// số đếm.
 //
-// MODE = "DW"  : 3x3 depthwise, zero-pad=1, C_OUT_EFF=C_IN, W_DEPTH=C_IN*9.
-// MODE = "PW"  : 1x1 pointwise, C_OUT_EFF=C_OUT, W_DEPTH=C_OUT*C_IN.
-//                C_IN must be <= 9 (current Tiny CNN uses 1 or 8). Verified
-//                by an elaboration $error if violated.
+// MODE = "DW"  : depthwise 3x3, zero-pad=1, C_OUT_EFF=C_IN, W_DEPTH=C_IN*9.
+// MODE = "PW"  : pointwise 1x1, C_OUT_EFF=C_OUT, W_DEPTH=C_OUT*C_IN.
+//                C_IN phải <= 9 (Tiny CNN hiện tại dùng 1 hoặc 8). Được kiểm tra
+//                bằng $fatal lúc elaboration nếu vi phạm.
 module conv2d_engine #(
     parameter MODE      = "DW",
     parameter C_IN      = 1,
@@ -64,7 +64,7 @@ function automatic signed [15:0] clip16;
     end
 endfunction
 
-// Sign-extend a 16-bit product to 32 bits (helper for the add-tree paths).
+// Mở rộng dấu (sign-extend) một tích 16 bit thành 32 bit (hàm trợ giúp cho các đường cây cộng).
 function automatic signed [31:0] sext16to32;
     input signed [15:0] v;
     begin
@@ -76,15 +76,15 @@ generate
 //=========================================================================
 if (MODE == "DW") begin : g_dw
 //=========================================================================
-    // ---- 4 rolling line buffers; row R input is written to lb[R mod 4] ----
-    // (Phase 5 introduced 4-buffer rolling to break the row R+3 vs row R-1
-    //  overwrite race; unchanged in Phase 5b.)
+    // ---- 4 bộ đệm hàng luân phiên; đầu vào hàng R được ghi vào lb[R mod 4] ----
+    // (Pha 5 đưa vào cơ chế luân phiên 4 bộ đệm để phá vỡ tranh chấp ghi đè giữa
+    //  hàng R+3 và hàng R-1; không đổi trong Pha 5b.)
     reg [LINE_WIDTH-1:0] lb0 [0:W-1];
     reg [LINE_WIDTH-1:0] lb1 [0:W-1];
     reg [LINE_WIDTH-1:0] lb2 [0:W-1];
     reg [LINE_WIDTH-1:0] lb3 [0:W-1];
 
-    // ---- Input/output position trackers ----
+    // ---- Bộ theo dõi vị trí đầu vào/đầu ra ----
     reg [$clog2(H+2)-1:0] in_row;
     reg [$clog2(W+1)-1:0] in_col;
     reg [1:0]             in_buf;
@@ -97,40 +97,40 @@ if (MODE == "DW") begin : g_dw
                          : (in_row > out_row + 1);
     wire output_done = (out_row >= H);
 
-    // ---- Pipeline registers (DW) ----
-    // STG-RA output: registered read address + buffer-select snapshot + flags.
-    // Splitting the address compute (out_col -> clamp) from the distributed-RAM
-    // read keeps the wide DW2 line read on a short register-to-register path,
-    // which is what closes sys_clk timing.
+    // ---- Thanh ghi pipeline (DW) ----
+    // Đầu ra STG-RA: địa chỉ đọc có thanh ghi + ảnh chụp chọn-bộ-đệm + các cờ.
+    // Tách phép tính địa chỉ (out_col -> kẹp giá trị) khỏi việc đọc RAM phân tán
+    // giúp giữ đường đọc hàng DW2 rộng trên một đường thanh-ghi-tới-thanh-ghi ngắn,
+    // đây chính là yếu tố đạt định thời sys_clk.
     reg                          s0ra_valid;
     reg [$clog2(W+1)-1:0]        ra_col_m1, ra_col, ra_col_p1;
     reg [1:0]                    ra_buf_top, ra_buf_mid, ra_buf_bot;
     reg                          ra_f_row0, ra_f_col0, ra_f_colW, ra_f_rowH;
 
-    // STG-RD output (register the line-RAM reads before the multiply):
-    // raw 3x3 line-buffer reads + boundary flags. The boundary zero-mux that
-    // forms the actual window happens one cycle later (STG0), so the line-RAM
-    // output is registered (rd_win) before it can reach the multiplier.
+    // Đầu ra STG-RD (đưa các lần đọc line-RAM vào thanh ghi trước phép nhân):
+    // các lần đọc thô bộ đệm hàng 3x3 + các cờ biên. Bộ mux-về-0 ở biên tạo nên
+    // cửa sổ thực sự diễn ra một chu kỳ sau (STG0), nên đầu ra line-RAM được đưa
+    // vào thanh ghi (rd_win) trước khi có thể tới bộ nhân.
     reg                          s0r_valid;
     reg [LINE_WIDTH-1:0]         rd_win [0:8];
     reg                          f_row0, f_col0, f_colW, f_rowH;
 
-    // STG0 output (window assembled, ready for multiply):
+    // Đầu ra STG0 (cửa sổ đã lắp ráp, sẵn sàng cho phép nhân):
     reg                          s1_valid;
     reg [LINE_WIDTH-1:0]         s1_win [0:8];
     reg [(C_OUT_EFF*32)-1:0]     s1_b;
 
-    // STG1 output (products + bias):
+    // Đầu ra STG1 (các tích + bias):
     reg                          s2_valid;
     reg signed [15:0]            s2_prod [0:C_IN*9-1];
     reg signed [31:0]            s2_bias [0:C_IN-1];
 
-    // STG2 output NEW (3 partial sums of 3 products each, bias carried forward):
+    // Đầu ra STG2 MỚI (3 tổng thành phần mỗi tổng 3 tích, bias mang chuyển tiếp):
     reg                          s2a_valid;
     reg signed [31:0]            s2a_part [0:C_IN*3-1];
     reg signed [31:0]            s2a_bias [0:C_IN-1];
 
-    // STG3 output (final sum with bias):
+    // Đầu ra STG3 (tổng cuối kèm bias):
     reg                          s3_valid;
     reg signed [31:0]            s3_acc   [0:C_IN-1];
 
@@ -149,9 +149,9 @@ if (MODE == "DW") begin : g_dw
         end
     endfunction
 
-    // Neighbour read columns, clamped in-range. Out-of-band positions are
-    // zeroed by the boundary flags in STG0, so clamping only avoids reading an
-    // out-of-range index here (value is discarded).
+    // Các cột đọc lân cận, được kẹp trong phạm vi. Vị trí ngoài biên được
+    // đặt về 0 bởi các cờ biên trong STG0, nên việc kẹp ở đây chỉ để tránh đọc
+    // một chỉ số ngoài phạm vi (giá trị bị loại bỏ).
     wire [$clog2(W+1)-1:0] rd_col_m1 = (out_col == 0)   ? out_col : (out_col - 1'b1);
     wire [$clog2(W+1)-1:0] rd_col_p1 = (out_col == W-1) ? out_col : (out_col + 1'b1);
 
@@ -192,7 +192,7 @@ if (MODE == "DW") begin : g_dw
             for (di = 0; di < C_IN*3; di = di+1)
                 s2a_part[di] <= 32'd0;
         end else begin
-            // ---- Pipeline valid shift ----
+            // ---- Dịch cờ valid của pipeline ----
             s0ra_valid <= 1'b0;
             s0r_valid  <= s0ra_valid;
             s1_valid   <= s0r_valid;
@@ -219,7 +219,7 @@ if (MODE == "DW") begin : g_dw
                 y_valid   <= 1'b0;
             end
 
-            // ---- INPUT INGEST ----
+            // ---- THU NHẬN ĐẦU VÀO ----
             if (x_valid && in_row < H) begin
                 case (in_buf)
                     2'd0: lb0[in_col] <= x_in;
@@ -237,10 +237,10 @@ if (MODE == "DW") begin : g_dw
                 end
             end
 
-            // ---- STG-RA: register read address + buffer-select + flags, advance.
-            // Only out_col -> clamp -> register here (short path). The buffer
-            // snapshot (ra_buf_*) freezes the pre-rotation buffers so the read one
-            // cycle later is coherent across row boundaries.
+            // ---- STG-RA: đưa địa chỉ đọc + chọn-bộ-đệm + cờ vào thanh ghi, tiến tới.
+            // Chỉ out_col -> kẹp -> ghi thanh ghi ở đây (đường ngắn). Ảnh chụp bộ
+            // đệm (ra_buf_*) đóng băng các bộ đệm trước khi luân phiên để lần đọc
+            // một chu kỳ sau nhất quán qua các ranh giới hàng.
             if (window_row_ready && !output_done) begin
                 ra_col_m1 <= rd_col_m1;
                 ra_col    <= out_col;
@@ -266,9 +266,9 @@ if (MODE == "DW") begin : g_dw
                 end
             end
 
-            // ---- STG-RD: read the raw 3x3 line-buffer window from the registered
-            // address (distributed-RAM read + 4:1 buffer mux isolated on its own
-            // cycle). Boundary zeroing is still deferred to STG0.
+            // ---- STG-RD: đọc cửa sổ thô 3x3 từ bộ đệm hàng theo địa chỉ đã ghi
+            // vào thanh ghi (đọc RAM phân tán + mux bộ đệm 4:1 được cách ly ở chu
+            // kỳ riêng). Việc đặt biên về 0 vẫn được hoãn sang STG0.
             if (s0ra_valid) begin
                 rd_win[0] <= read_line(ra_buf_top, ra_col_m1);
                 rd_win[1] <= read_line(ra_buf_top, ra_col);
@@ -286,9 +286,9 @@ if (MODE == "DW") begin : g_dw
                 f_rowH <= ra_f_rowH;
             end
 
-            // ---- STG0: boundary zero-mux assembles the window from rd_win ----
-            // Produces exactly the same s1_win values as the previous single-cycle
-            // assembly; s1_valid follows s0r_valid via the pipeline shift above.
+            // ---- STG0: mux-về-0 ở biên lắp ráp cửa sổ từ rd_win ----
+            // Tạo ra đúng các giá trị s1_win giống như cách lắp ráp một chu kỳ
+            // trước đây; s1_valid theo sau s0r_valid qua phép dịch pipeline ở trên.
             if (s0r_valid) begin
                 s1_win[0] <= (f_row0 || f_col0) ? {LINE_WIDTH{1'b0}} : rd_win[0];
                 s1_win[1] <=  f_row0            ? {LINE_WIDTH{1'b0}} : rd_win[1];
@@ -302,7 +302,7 @@ if (MODE == "DW") begin : g_dw
                 s1_b      <= b;
             end
 
-            // ---- STG1: 9 products per channel ----
+            // ---- STG1: 9 tích mỗi kênh ----
             if (s1_valid) begin
                 for (dc = 0; dc < C_IN; dc = dc+1) begin
                     s2_bias[dc] <= $signed(s1_b[(dc*32)+:32]);
@@ -327,7 +327,7 @@ if (MODE == "DW") begin : g_dw
                 end
             end
 
-            // ---- STG2 NEW: 3 partial sums of 3 products each + bias carry ----
+            // ---- STG2 MỚI: 3 tổng thành phần mỗi tổng 3 tích + mang bias ----
             if (s2_valid) begin
                 for (dc = 0; dc < C_IN; dc = dc+1) begin
                     s2a_bias[dc] <= s2_bias[dc];
@@ -346,7 +346,7 @@ if (MODE == "DW") begin : g_dw
                 end
             end
 
-            // ---- STG3: sum 3 partials + bias ----
+            // ---- STG3: cộng 3 tổng thành phần + bias ----
             if (s2a_valid) begin
                 for (dc = 0; dc < C_IN; dc = dc+1) begin
                     s3_acc[dc] <= s2a_part[dc*3 + 0]
@@ -356,7 +356,7 @@ if (MODE == "DW") begin : g_dw
                 end
             end
 
-            // ---- STG4: shift + clip ----
+            // ---- STG4: dịch + clip ----
             if (s3_valid) begin
                 for (dc = 0; dc < C_IN; dc = dc+1)
                     y_out[(dc*16)+:16] <= clip16(s3_acc[dc] >>> SHIFT);
@@ -368,41 +368,40 @@ end // g_dw
 //=========================================================================
 else begin : g_pw
 //=========================================================================
-    // PW MODE: 1x1 pointwise convolution. C_IN must be <= 9 (asserted below).
-    // Same 5-stage pipeline as DW: capture → mult → partial-sum → final-sum → shift/clip.
+    // CHẾ ĐỘ PW: tích chập pointwise 1x1. C_IN phải <= 9 (được kiểm tra bên dưới).
+    // Cùng pipeline 5 tầng như DW: chốt → nhân → tổng-thành-phần → tổng-cuối → dịch/clip.
 
-    // Elaboration-time check
+    // Kiểm tra lúc elaboration: dừng với trạng thái lỗi (không phải $stop tương tác)
+    // nếu bố cục tổng thành phần (tối đa 9 ô tích) bị vượt quá.
     initial begin
-        if (C_IN > 9) begin
-            $display("FATAL conv2d_engine PW: C_IN=%0d > 9 not supported by partial-sum layout", C_IN);
-            $stop;
-        end
+        if (C_IN > 9)
+            $fatal(1, "conv2d_engine PW: C_IN=%0d > 9 not supported by partial-sum layout", C_IN);
     end
 
-    // STG0 capture
+    // STG0 chốt dữ liệu
     reg                       s1_valid;
     reg [(C_IN*16)-1:0]       s1_x;
     reg [(W_DEPTH*8)-1:0]     s1_w;
     reg [(C_OUT_EFF*32)-1:0]  s1_b;
 
-    // STG1 products + bias
+    // STG1 các tích + bias
     reg                       s2_valid;
     reg signed [15:0]         s2_prod [0:C_OUT_EFF*C_IN-1];
     reg signed [31:0]         s2_bias [0:C_OUT_EFF-1];
 
-    // STG2 partial sums (3 partials per output channel)
+    // STG2 các tổng thành phần (3 tổng thành phần mỗi kênh đầu ra)
     reg                       s2a_valid;
     reg signed [31:0]         s2a_part [0:C_OUT_EFF*3-1];
     reg signed [31:0]         s2a_bias [0:C_OUT_EFF-1];
 
-    // STG3 final sum
+    // STG3 tổng cuối
     reg                       s3_valid;
     reg signed [31:0]         s3_acc   [0:C_OUT_EFF-1];
 
     integer pc, pi;
 
-    // For each output channel pc, sign-extend product[pi] if pi < C_IN else 0.
-    // Returns 32-bit zero-extended placeholder when index is beyond C_IN.
+    // Với mỗi kênh đầu ra pc, mở rộng dấu product[pi] nếu pi < C_IN, ngược lại là 0.
+    // Trả về giá trị thay thế 32 bit (mở rộng 0) khi chỉ số vượt quá C_IN.
     function automatic signed [31:0] pw_prod_or_zero;
         input integer pc_local;
         input integer pi_local;
@@ -441,7 +440,7 @@ else begin : g_pw
             s3_valid  <= s2a_valid;
             y_valid   <= s3_valid;
 
-            // ---- STG0: capture inputs ----
+            // ---- STG0: chốt các đầu vào ----
             s1_valid <= x_valid;
             if (x_valid) begin
                 s1_x <= x_in;
@@ -449,7 +448,7 @@ else begin : g_pw
                 s1_b <= b;
             end
 
-            // ---- STG1: per-(co, ci) multiplications ----
+            // ---- STG1: các phép nhân theo (co, ci) ----
             if (s1_valid) begin
                 for (pc = 0; pc < C_OUT_EFF; pc = pc+1) begin
                     s2_bias[pc] <= $signed(s1_b[(pc*32)+:32]);
@@ -461,9 +460,9 @@ else begin : g_pw
                 end
             end
 
-            // ---- STG2 NEW: 3 partial sums per output channel + bias carry ----
-            // Each partial sums up to 3 product slots; pw_prod_or_zero returns 0
-            // for indices >= C_IN so unused slots fold out at elaboration time.
+            // ---- STG2 MỚI: 3 tổng thành phần mỗi kênh đầu ra + mang bias ----
+            // Mỗi tổng thành phần cộng tối đa 3 ô tích; pw_prod_or_zero trả về 0
+            // cho các chỉ số >= C_IN nên các ô không dùng được loại bỏ lúc elaboration.
             if (s2_valid) begin
                 for (pc = 0; pc < C_OUT_EFF; pc = pc+1) begin
                     s2a_bias[pc] <= s2_bias[pc];
@@ -482,7 +481,7 @@ else begin : g_pw
                 end
             end
 
-            // ---- STG3: sum 3 partials + bias ----
+            // ---- STG3: cộng 3 tổng thành phần + bias ----
             if (s2a_valid) begin
                 for (pc = 0; pc < C_OUT_EFF; pc = pc+1) begin
                     s3_acc[pc] <= s2a_part[pc*3 + 0]
@@ -492,7 +491,7 @@ else begin : g_pw
                 end
             end
 
-            // ---- STG4: shift + clip ----
+            // ---- STG4: dịch + clip ----
             if (s3_valid) begin
                 for (pc = 0; pc < C_OUT_EFF; pc = pc+1)
                     y_out[(pc*16)+:16] <= clip16(s3_acc[pc] >>> SHIFT);

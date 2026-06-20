@@ -1,15 +1,15 @@
-// top.v - Tang Mega 138K integrated biomedical AI + HDMI/DVI top.
-// Vendor-facing shell stays in gowin_fpga/. Technology-neutral RTL lives in ../rtl/.
+// top.v - Top tích hợp AI y sinh + HDMI/DVI cho Tang Mega 138K.
+// Lớp vỏ hướng nhà cung cấp nằm trong gowin_fpga/. RTL trung lập công nghệ nằm trong ../rtl/.
 module top #(
-    // Full 3-channel STFT+CNN replication currently exceeds GW5AST-138B DFF
-    // capacity. Keep one AI lane for FPGA bring-up; ECG/EMG still feed the
-    // waveform display and can be re-enabled after shared-lane/DDR work.
+    // Nhân bản đầy đủ STFT+CNN 3 kênh hiện vượt quá dung lượng DFF của GW5AST-138B.
+    // Giữ một làn AI cho việc bring-up FPGA; ECG/EMG vẫn cấp cho
+    // màn hình dạng sóng và có thể bật lại sau khi hoàn thiện làn-dùng-chung/DDR.
     parameter ENABLE_FULL_AI_LANES = 1'b0,
-    // The current Tiny CNN stores whole feature maps in random-access buffers.
-    // Gowin synthesis maps those multi-read buffers into logic instead of BSRAM,
-    // so the FPGA bring-up build defaults to sensor/display/threshold mode.
-    // Unit/subsystem verification still covers STFT/CNN directly, and this lane
-    // can be re-enabled for simulation/full-mode experiments.
+    // Tiny CNN hiện tại lưu toàn bộ bản đồ đặc trưng trong các bộ đệm truy cập ngẫu nhiên.
+    // Tổng hợp Gowin ánh xạ các bộ đệm nhiều-cổng-đọc đó vào logic thay vì BSRAM,
+    // nên bản build bring-up FPGA mặc định ở chế độ cảm biến/hiển thị/ngưỡng.
+    // Kiểm chứng đơn vị/phân hệ vẫn bao phủ STFT/CNN trực tiếp, và làn này
+    // có thể bật lại cho mô phỏng/thử nghiệm chế độ đầy đủ.
     parameter ENABLE_EEG_AI_LANE = 1'b0
 )(
     input                  clk,
@@ -85,13 +85,13 @@ reset_sync u_rst_pix (
 );
 
 // ---------------------------------------------------------------------------
-// Sensor ingress
+// Thu nhận tín hiệu cảm biến
 // ---------------------------------------------------------------------------
 wire [15:0] emg_sample;
 wire        emg_valid;
 wire [15:0] emg_sample_uart;
 wire        emg_valid_uart;
-// Debug UART transmitter FSM interface wires/regs
+// Các wire/reg giao diện FSM của bộ phát UART gỡ lỗi
 reg [7:0] tx_data_r;
 reg       tx_valid_r;
 wire      tx_ready_w;
@@ -141,7 +141,7 @@ i2c_slave #(.I2C_ADDR(7'h48)) u_i2c (
 );
 
 // ---------------------------------------------------------------------------
-// Input FIFOs
+// Các FIFO đầu vào
 // ---------------------------------------------------------------------------
 wire [15:0] eeg_sample;
 wire [15:0] ecg_sample_w;
@@ -159,10 +159,9 @@ assign eeg_valid = eeg_fifo_rd;
 assign ecg_valid = ecg_fifo_rd;
 assign emg_valid = emg_fifo_rd;
 
-gowin_fifo_async u_fifo_eeg (
+sync_fifo u_fifo_eeg (
     .Reset(~sys_rst_n),
-    .WrClk(sys_clk),
-    .RdClk(sys_clk),
+    .clk  (sys_clk),
     .WrEn(spi_valid_raw && (spi_channel_raw == 2'd0)),
     .RdEn(eeg_fifo_rd),
     .Data(spi_sample_raw),
@@ -171,10 +170,9 @@ gowin_fifo_async u_fifo_eeg (
     .Full(eeg_fifo_full)
 );
 
-gowin_fifo_async u_fifo_ecg (
+sync_fifo u_fifo_ecg (
     .Reset(~sys_rst_n),
-    .WrClk(sys_clk),
-    .RdClk(sys_clk),
+    .clk  (sys_clk),
     .WrEn(spi_valid_raw && (spi_channel_raw == 2'd1)),
     .RdEn(ecg_fifo_rd),
     .Data(spi_sample_raw),
@@ -183,10 +181,9 @@ gowin_fifo_async u_fifo_ecg (
     .Full(ecg_fifo_full)
 );
 
-gowin_fifo_async u_fifo_emg (
+sync_fifo u_fifo_emg (
     .Reset(~sys_rst_n),
-    .WrClk(sys_clk),
-    .RdClk(sys_clk),
+    .clk  (sys_clk),
     .WrEn(emg_valid_uart),
     .RdEn(emg_fifo_rd),
     .Data(emg_sample_uart),
@@ -196,7 +193,7 @@ gowin_fifo_async u_fifo_emg (
 );
 
 // ---------------------------------------------------------------------------
-// STFT ROMs and pipelines
+// Các ROM và pipeline của STFT
 // ---------------------------------------------------------------------------
 wire [5:0]  hamming_addr_eeg, hamming_addr_ecg, hamming_addr_emg;
 wire [7:0]  hamming_data_eeg, hamming_data_ecg, hamming_data_emg;
@@ -335,7 +332,7 @@ wire spec_ecg_start = spec_ecg_valid & ~spec_ecg_valid_d;
 wire spec_emg_start = spec_emg_valid & ~spec_emg_valid_d;
 
 // ---------------------------------------------------------------------------
-// CNN accelerators
+// Các bộ tăng tốc CNN
 // ---------------------------------------------------------------------------
 wire [8:0] bsram_addr_eeg, bsram_addr_ecg, bsram_addr_emg;
 wire [7:0] bsram_data_eeg, bsram_data_ecg, bsram_data_emg;
@@ -422,7 +419,7 @@ generate
 endgenerate
 
 // ---------------------------------------------------------------------------
-// Vitals threshold and decision fusion
+// Ngưỡng chỉ số sinh tồn và hợp nhất quyết định
 // ---------------------------------------------------------------------------
 (* syn_keep = 1 *) wire [1:0] spo2_class;
 (* syn_keep = 1 *) wire [1:0] temp_class;
@@ -455,7 +452,7 @@ decision_layer u_decision (
 );
 
 // ---------------------------------------------------------------------------
-// Display and DVI output
+// Hiển thị và đầu ra DVI
 // ---------------------------------------------------------------------------
 wire [11:0] hcount;
 wire [11:0] vcount;
@@ -665,7 +662,7 @@ DVI_TX_Top dvi_tx_i (
     .O_tmds_data_n(tmds_d_n_0)
 );
 
-// DDR3 and camera capture are not used by the current biomedical demo.
+// DDR3 và thu hình từ camera không được dùng trong demo y sinh hiện tại.
 assign ddr_addr    = 15'd0;
 assign ddr_bank    = 3'd0;
 assign ddr_cs      = 1'b1;

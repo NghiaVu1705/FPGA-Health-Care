@@ -1,7 +1,7 @@
-// top_shared_ai.v - Tang Mega top for DDR3-backed shared AI architecture.
+// top_shared_ai.v - Top Tang Mega cho kiến trúc AI dùng chung dựa trên DDR3.
 //
-// This target keeps one STFT/CNN lane and time-multiplexes EEG/ECG/EMG. CNN
-// weights are fetched from DDR3 into a small local cache before each channel.
+// Mục tiêu này giữ một làn STFT/CNN và ghép kênh theo thời gian EEG/ECG/EMG. Trọng số
+// CNN được nạp từ DDR3 vào một cache cục bộ nhỏ trước mỗi kênh.
 module top_shared_ai (
     input                  clk,
     input                  rst_n,
@@ -101,7 +101,7 @@ localparam integer SAMPLE_FIFO_DEPTH = 2048;
 localparam integer SAMPLE_FIFO_AW    = 11;
 
 // ---------------------------------------------------------------------------
-// Sensor ingress and per-channel FIFOs
+// Thu nhận tín hiệu cảm biến và các FIFO theo từng kênh
 // ---------------------------------------------------------------------------
 wire [15:0] emg_sample_uart;
 wire        emg_valid_uart;
@@ -166,17 +166,17 @@ assign ecg_fifo_rd = ecg_ready_core && !ecg_fifo_empty;
 assign emg_fifo_rd = emg_ready_core && !emg_fifo_empty;
 
 // ---------------------------------------------------------------------------
-// Multi-channel Signal Replay (Self-Test)
+// Phát lại tín hiệu đa kênh (Tự kiểm tra - Self-Test)
 // ---------------------------------------------------------------------------
-// Pressing AB13 (case_next_n, active-low w/ pull-up) replays one stored test
-// window per channel (EEG/ECG/EMG) plus simulated SpO2/Temp vitals. Replayed
-// samples are MUXed into the same per-channel FIFOs the live sensors feed, so
-// the downstream STFT/CNN/decision pipeline is exercised end-to-end.
+// Nhấn AB13 (case_next_n, tích cực mức thấp có điện trở kéo lên) phát lại một
+// cửa sổ kiểm thử đã lưu cho mỗi kênh (EEG/ECG/EMG) cộng với chỉ số sinh tồn
+// SpO2/Temp mô phỏng. Các mẫu phát lại được MUX vào chính các FIFO theo từng kênh
+// mà cảm biến thực cấp vào, nên pipeline STFT/CNN/quyết định phía sau được chạy đầu-cuối.
 
-// --- Button debounce -> 1-cycle replay_trigger ---
+// --- Khử rung nút nhấn (debounce) -> replay_trigger 1 chu kỳ ---
 reg  [1:0]  btn_sync;
 reg  [15:0] btn_cnt;
-reg         btn_stable;     // debounced level (1 = released)
+reg         btn_stable;     // mức đã khử rung (1 = nhả nút)
 reg         btn_stable_d;
 always @(posedge sys_clk or negedge sys_rst_n) begin
     if (!sys_rst_n) begin
@@ -199,37 +199,37 @@ always @(posedge sys_clk or negedge sys_rst_n) begin
         end
     end
 end
-wire replay_trigger = btn_stable_d & ~btn_stable;   // falling edge = fresh press
+wire replay_trigger = btn_stable_d & ~btn_stable;   // cạnh xuống = một lần nhấn mới
 
-// --- AB13 press cycles replay case: live -> case1 -> case2 -> ... -> live ---
-// Each clean press advances replay_case. 0 = live sensors (replay off); 1..N play
-// a stored clinical scenario (a window per channel + simulated vitals) that drives
-// a distinct decision (Normal / Abnormal / Critical). Pressing past the last case
-// returns to live. mode_replay is simply "a replay case is selected".
-localparam integer N_REPLAY_CASES  = 3;                       // demo scenarios (excl. live)
+// --- Nhấn AB13 luân chuyển case phát lại: live -> case1 -> case2 -> ... -> live ---
+// Mỗi lần nhấn sạch sẽ tăng replay_case. 0 = cảm biến thực (tắt phát lại); 1..N chạy
+// một kịch bản lâm sàng đã lưu (một cửa sổ mỗi kênh + chỉ số sinh tồn mô phỏng) dẫn tới
+// một quyết định riêng biệt (Bình thường / Bất thường / Nguy kịch). Nhấn quá case cuối
+// quay về live. mode_replay đơn giản là "đang chọn một case phát lại".
+localparam integer N_REPLAY_CASES  = 3;                       // kịch bản demo (không tính live)
 localparam integer REPLAY_ROM_DEPTH = N_REPLAY_CASES * SAMPLE_FIFO_DEPTH;  // 3 x 2048
 localparam integer REPLAY_ROM_AW    = 13;                     // ceil(log2(6144))
-reg [1:0] replay_case;   // 0 = live, 1..N_REPLAY_CASES = scenario
+reg [1:0] replay_case;   // 0 = live, 1..N_REPLAY_CASES = kịch bản
 always @(posedge sys_clk or negedge sys_rst_n) begin
     if (!sys_rst_n)          replay_case <= 2'd0;
     else if (replay_trigger) replay_case <= (replay_case == N_REPLAY_CASES[1:0]) ? 2'd0
                                                                                   : replay_case + 2'd1;
 end
 wire mode_replay = (replay_case != 2'd0);
-// Window base within each per-channel ROM = (case-1) * 2048; live -> window 0 (unused).
+// Gốc cửa sổ trong mỗi ROM theo từng kênh = (case-1) * 2048; live -> cửa sổ 0 (không dùng).
 wire [1:0] rep_win = mode_replay ? (replay_case - 2'd1) : 2'd0;
 
-// --- Looping replay read pointer + FSM ---
+// --- Con trỏ đọc phát lại lặp vòng + FSM ---
 localparam [SAMPLE_FIFO_AW-1:0] REP_LAST = SAMPLE_FIFO_DEPTH - 1;
 localparam [1:0]  R_IDLE = 2'd0, R_ADDR = 2'd1, R_WRITE = 2'd2;
 reg  [1:0]  rep_state;
 reg  [SAMPLE_FIFO_AW-1:0] rep_addr;
-reg         rep_we;               // 1-cycle write strobe shared by all 3 FIFOs
-reg         vitals_updated_rep;   // single pulse when replay mode is entered
+reg         rep_we;               // xung ghi 1 chu kỳ dùng chung cho cả 3 FIFO
+reg         vitals_updated_rep;   // một xung duy nhất khi vào chế độ phát lại
 
-// Backpressure: only advance/write when every destination FIFO has room. With
-// 2048-deep FIFOs a full per-channel frame fits, so the time-multiplexed AI core
-// can drain one channel at a time without the writer dead-locking.
+// Chặn ngược (backpressure): chỉ tiến/ghi khi mọi FIFO đích còn chỗ. Với
+// FIFO sâu 2048 thì một khung đầy đủ theo từng kênh vừa khít, nên lõi AI ghép kênh
+// theo thời gian có thể rút từng kênh một mà bên ghi không bị bế tắc.
 wire rep_fifo_ready = !eeg_fifo_full && !ecg_fifo_full && !emg_fifo_full;
 
 always @(posedge sys_clk or negedge sys_rst_n) begin
@@ -245,14 +245,14 @@ always @(posedge sys_clk or negedge sys_rst_n) begin
             R_IDLE: begin
                 rep_addr <= {SAMPLE_FIFO_AW{1'b0}};
                 if (mode_replay) begin
-                    vitals_updated_rep <= 1'b1;   // latch simulated vitals once
+                    vitals_updated_rep <= 1'b1;   // chốt chỉ số sinh tồn mô phỏng một lần
                     rep_state          <= R_ADDR;
                 end
             end
-            // Present rep_addr; the registered ROM read lands one cycle later.
+            // Đưa rep_addr ra; kết quả đọc ROM có thanh ghi về sau một chu kỳ.
             R_ADDR: rep_state <= mode_replay ? R_WRITE : R_IDLE;
-            // ROM data for rep_addr is valid; write one sample per channel then
-            // advance, wrapping 2047->0 so the pattern repeats while mode stays on.
+            // Dữ liệu ROM cho rep_addr đã hợp lệ; ghi một mẫu mỗi kênh rồi
+            // tiến tới, vòng 2047->0 để mẫu lặp lại khi chế độ vẫn bật.
             R_WRITE: begin
                 if (!mode_replay) begin
                     rep_state <= R_IDLE;
@@ -261,16 +261,16 @@ always @(posedge sys_clk or negedge sys_rst_n) begin
                     rep_addr  <= (rep_addr == REP_LAST) ? {SAMPLE_FIFO_AW{1'b0}} : rep_addr + 1'b1;
                     rep_state <= R_ADDR;
                 end
-                // else hold (rep_addr frozen -> ROM data stays valid)
+                // ngược lại thì giữ (rep_addr đóng băng -> dữ liệu ROM vẫn hợp lệ)
             end
             default: rep_state <= R_IDLE;
         endcase
     end
 end
 
-// --- Replay sample ROMs (N_REPLAY_CASES x 2048 x 16, registered read) ---
-// Each per-channel hex (extract_sample.py) is the N case windows concatenated in
-// case order. The active window = {rep_win, rep_addr} (window base + sample idx).
+// --- Các ROM mẫu phát lại (N_REPLAY_CASES x 2048 x 16, đọc có thanh ghi) ---
+// Mỗi file hex theo từng kênh (extract_sample.py) là N cửa sổ case nối tiếp theo
+// thứ tự case. Cửa sổ đang hoạt động = {rep_win, rep_addr} (gốc cửa sổ + chỉ số mẫu).
 wire [15:0] rep_eeg_data;
 wire [15:0] rep_ecg_data;
 wire [15:0] rep_emg_data;
@@ -283,12 +283,12 @@ replay_rom #(.INIT_FILE("test_ecg.hex"), .AW(REPLAY_ROM_AW), .DEPTH(REPLAY_ROM_D
 replay_rom #(.INIT_FILE("test_emg.hex"), .AW(REPLAY_ROM_AW), .DEPTH(REPLAY_ROM_DEPTH)) u_rom_emg (
     .clk(sys_clk), .addr(rep_rom_addr), .dout(rep_emg_data));
 
-// --- Live-sensor write strobes ---
+// --- Xung ghi từ cảm biến thực ---
 wire eeg_wr_sensor = spi_valid_raw && (spi_channel_raw == 2'd0);
 wire ecg_wr_sensor = spi_valid_raw && (spi_channel_raw == 2'd1);
 wire emg_wr_sensor = emg_valid_uart;
 
-// --- FIFO write MUX: replay path while mode_replay, live sensors otherwise ---
+// --- MUX ghi FIFO: đường phát lại khi mode_replay, cảm biến thực nếu ngược lại ---
 wire        eeg_wr_en   = mode_replay ? rep_we       : eeg_wr_sensor;
 wire        ecg_wr_en   = mode_replay ? rep_we       : ecg_wr_sensor;
 wire        emg_wr_en   = mode_replay ? rep_we       : emg_wr_sensor;
@@ -296,28 +296,27 @@ wire [15:0] eeg_wr_data = mode_replay ? rep_eeg_data : spi_sample_raw;
 wire [15:0] ecg_wr_data = mode_replay ? rep_ecg_data : spi_sample_raw;
 wire [15:0] emg_wr_data = mode_replay ? rep_emg_data : emg_sample_uart;
 
-// --- Per-case simulated vitals (held while that case is selected) ---
-// Chosen to reinforce each scenario's decision level (temp is 0.5C/LSB: 72=36.0C,
-// 80=40.0C). Keep these in sync with CASES in software/datasets/extract_sample.py.
+// --- Chỉ số sinh tồn mô phỏng theo từng case (giữ khi case đó được chọn) ---
+// Được chọn để củng cố mức quyết định của mỗi kịch bản (temp là 0.5C/LSB: 72=36.0C,
+// 80=40.0C). Giữ đồng bộ với CASES trong software/datasets/extract_sample.py.
 reg [7:0] rep_spo2, rep_temp;
 always @(*) begin
     case (replay_case)
-        2'd1:    begin rep_spo2 = 8'd98; rep_temp = 8'd72; end  // Normal   (97%, 36.0C)
-        2'd2:    begin rep_spo2 = 8'd92; rep_temp = 8'd72; end  // Abnormal (92%, 36.0C)
-        2'd3:    begin rep_spo2 = 8'd88; rep_temp = 8'd80; end  // Critical (88%, 40.0C)
+        2'd1:    begin rep_spo2 = 8'd98; rep_temp = 8'd72; end  // Bình thường (97%, 36.0C)
+        2'd2:    begin rep_spo2 = 8'd92; rep_temp = 8'd72; end  // Bất thường  (92%, 36.0C)
+        2'd3:    begin rep_spo2 = 8'd88; rep_temp = 8'd80; end  // Nguy kịch   (88%, 40.0C)
         default: begin rep_spo2 = 8'd98; rep_temp = 8'd72; end
     endcase
 end
 
-// --- Vitals MUX: per-case simulated values in replay, live I2C otherwise ---
+// --- MUX chỉ số sinh tồn: giá trị mô phỏng theo case khi phát lại, I2C thực nếu ngược lại ---
 wire [7:0]  spo2_disp      = mode_replay ? rep_spo2 : spo2_raw;
 wire [7:0]  temp_disp      = mode_replay ? rep_temp : temp_raw;
 wire        vitals_upd_mux = mode_replay ? vitals_updated_rep : vitals_updated;
 
-gowin_fifo_async #(.DEPTH(SAMPLE_FIFO_DEPTH), .AW(SAMPLE_FIFO_AW)) u_fifo_eeg (
+sync_fifo #(.DEPTH(SAMPLE_FIFO_DEPTH), .AW(SAMPLE_FIFO_AW)) u_fifo_eeg (
     .Reset(~sys_rst_n),
-    .WrClk(sys_clk),
-    .RdClk(sys_clk),
+    .clk  (sys_clk),
     .WrEn(eeg_wr_en),
     .RdEn(eeg_fifo_rd),
     .Data(eeg_wr_data),
@@ -326,10 +325,9 @@ gowin_fifo_async #(.DEPTH(SAMPLE_FIFO_DEPTH), .AW(SAMPLE_FIFO_AW)) u_fifo_eeg (
     .Full(eeg_fifo_full)
 );
 
-gowin_fifo_async #(.DEPTH(SAMPLE_FIFO_DEPTH), .AW(SAMPLE_FIFO_AW)) u_fifo_ecg (
+sync_fifo #(.DEPTH(SAMPLE_FIFO_DEPTH), .AW(SAMPLE_FIFO_AW)) u_fifo_ecg (
     .Reset(~sys_rst_n),
-    .WrClk(sys_clk),
-    .RdClk(sys_clk),
+    .clk  (sys_clk),
     .WrEn(ecg_wr_en),
     .RdEn(ecg_fifo_rd),
     .Data(ecg_wr_data),
@@ -338,10 +336,9 @@ gowin_fifo_async #(.DEPTH(SAMPLE_FIFO_DEPTH), .AW(SAMPLE_FIFO_AW)) u_fifo_ecg (
     .Full(ecg_fifo_full)
 );
 
-gowin_fifo_async #(.DEPTH(SAMPLE_FIFO_DEPTH), .AW(SAMPLE_FIFO_AW)) u_fifo_emg (
+sync_fifo #(.DEPTH(SAMPLE_FIFO_DEPTH), .AW(SAMPLE_FIFO_AW)) u_fifo_emg (
     .Reset(~sys_rst_n),
-    .WrClk(sys_clk),
-    .RdClk(sys_clk),
+    .clk  (sys_clk),
     .WrEn(emg_wr_en),
     .RdEn(emg_fifo_rd),
     .Data(emg_wr_data),
@@ -351,7 +348,7 @@ gowin_fifo_async #(.DEPTH(SAMPLE_FIFO_DEPTH), .AW(SAMPLE_FIFO_AW)) u_fifo_emg (
 );
 
 // ---------------------------------------------------------------------------
-// DDR3 native port
+// Cổng native DDR3
 // ---------------------------------------------------------------------------
 wire ddr_clk_out;
 wire ddr_rst_unused;
@@ -384,11 +381,11 @@ wire         ddr_wr_data_end_boot;
 wire [31:0]  ddr_wr_data_mask_boot;
 
 // ---------------------------------------------------------------------------
-// Boot-time Flash/ROM -> DDR3 weight loader
+// Bộ nạp trọng số Flash/ROM -> DDR3 lúc khởi động
 // ---------------------------------------------------------------------------
-// Sequence: RESET -> LOAD_WEIGHTS -> WAIT_CALIB -> RUN. LOAD_WEIGHTS waits for
-// DDR3 calibration before starting the CRC-checking weight_boot_loader, because
-// the native DDR3 write port is not legal to use before init_calib_complete.
+// Trình tự: RESET -> LOAD_WEIGHTS -> WAIT_CALIB -> RUN. LOAD_WEIGHTS chờ
+// DDR3 hiệu chỉnh (calibration) xong trước khi khởi động weight_boot_loader có kiểm CRC, vì
+// cổng ghi native DDR3 không được phép dùng trước init_calib_complete.
 localparam [1:0]
     BOOT_RESET        = 2'd0,
     BOOT_LOAD_WEIGHTS = 2'd1,
@@ -403,7 +400,7 @@ reg [1:0] boot_state;
 reg       weight_boot_start_r;
 reg       weight_boot_started;
 reg       weight_flash_valid_r;
-reg       weight_flash_pending;   // addr presented, waiting 1 cyc for registered ROM
+reg       weight_flash_pending;   // đã đưa addr, chờ 1 chu kỳ cho ROM có thanh ghi
 reg       weight_load_done_r;
 reg       weight_load_error_r;
 reg [WEIGHT_IMAGE_AW-1:0] weight_flash_addr;
@@ -420,22 +417,22 @@ assign weight_load_error = weight_load_error_r;
 
 wire boot_run_enable = (boot_state == BOOT_RUN) && weight_load_done_r && !weight_load_error_r;
 
-// Self-test fallback: while mode_replay is on, also release the AI core / give it
-// the DDR port even if the weight boot never reached BOOT_RUN (e.g. DDR3 fails to
-// calibrate on the board). This keeps the replay demo alive (pipeline runs; if DDR
-// is dead the prefetch just times out per channel). mode_replay only toggles long
-// after boot has finished (debounce ~64Ki cyc + human press), so there is no real
-// boot-vs-AI DDR-port contention. CNN weights may be garbage in this fallback.
+// Phương án dự phòng tự kiểm tra: khi mode_replay bật, vẫn nhả lõi AI / trao cho nó
+// cổng DDR ngay cả khi quá trình boot trọng số chưa bao giờ tới BOOT_RUN (vd: DDR3
+// không hiệu chỉnh được trên bo). Điều này giữ demo phát lại còn sống (pipeline chạy; nếu DDR
+// hỏng thì prefetch chỉ hết giờ (timeout) theo từng kênh). mode_replay chỉ bật/tắt rất lâu
+// sau khi boot xong (khử rung ~64Ki chu kỳ + thao tác người), nên không có tranh chấp
+// cổng-DDR boot-với-AI thực sự. Trọng số CNN có thể là rác trong phương án dự phòng này.
 wire run_enable_eff      = boot_run_enable | mode_replay;
 wire ddr_boot_owns_port  = !run_enable_eff;
 
-// INIT_FILE is a BARE filename. GowinSynthesis resolves bare-name $readmemh
-// relative to the .v SOURCE directory (this file -> rtl/top/), exactly like
-// font8x16.hex resolves next to text_renderer.v in rtl/display/. It does NOT
-// look in Final/ or the synth working dir. If the file is missing there the ROM
-// init fails (EX3988) and the whole ROM is swept (NL0002) -> on the board the
-// loader streams zeros and CRC fails. So keep biomed_weights.hex in rtl/top/
-// (generated/copied there) AND a copy in verification/ for the cocotb sim cwd.
+// INIT_FILE là tên file TRƠ (không đường dẫn). GowinSynthesis phân giải $readmemh tên-trơ
+// tương đối với thư mục NGUỒN .v (file này -> rtl/top/), giống hệt như
+// font8x16.hex phân giải cạnh text_renderer.v trong rtl/display/. Nó KHÔNG
+// tìm trong Final/ hay thư mục làm việc của tổng hợp. Nếu thiếu file ở đó thì khởi tạo ROM
+// thất bại (EX3988) và toàn bộ ROM bị quét bỏ (NL0002) -> trên bo, bộ
+// nạp truyền toàn số 0 và CRC thất bại. Vì vậy giữ biomed_weights.hex trong rtl/top/
+// (được sinh/sao chép vào đó) VÀ một bản trong verification/ cho cwd của sim cocotb.
 weight_image_rom #(
     .INIT_FILE("biomed_weights.hex"),
     .AW       (WEIGHT_IMAGE_AW),
@@ -520,28 +517,28 @@ always @(posedge sys_clk or negedge sys_rst_n) begin
             end
 
             BOOT_LOAD_WEIGHTS: begin
-                // Stream the registered ROM into the loader. Because the ROM read
-                // is registered (1-cycle latency), each new address needs a
-                // one-cycle `pending` bubble before its byte is valid; during
-                // loader back-pressure the address holds so the ROM output (and
-                // thus flash_data) stays stable.
+                // Truyền ROM có thanh ghi vào bộ nạp. Vì việc đọc ROM
+                // có thanh ghi (độ trễ 1 chu kỳ), mỗi địa chỉ mới cần một
+                // bong bóng `pending` một chu kỳ trước khi byte của nó hợp lệ; trong lúc
+                // bộ nạp chặn ngược thì địa chỉ được giữ để đầu ra ROM (và
+                // do đó flash_data) ổn định.
                 if (ddr_init_calib_complete) begin
                     if (!weight_boot_started) begin
                         weight_boot_started  <= 1'b1;
                         weight_boot_start_r  <= 1'b1;
                         weight_flash_addr    <= {WEIGHT_IMAGE_AW{1'b0}};
-                        weight_flash_pending <= 1'b1;   // ROM data for addr 0 lands next cycle
+                        weight_flash_pending <= 1'b1;   // dữ liệu ROM cho addr 0 về ở chu kỳ kế
                         weight_flash_valid_r <= 1'b0;
                     end else if (weight_flash_pending) begin
                         weight_flash_pending <= 1'b0;
-                        weight_flash_valid_r <= 1'b1;   // registered ROM output now valid
+                        weight_flash_valid_r <= 1'b1;   // đầu ra ROM có thanh ghi nay đã hợp lệ
                     end else if (weight_flash_valid_r && weight_flash_ready) begin
                         if (weight_flash_addr == WEIGHT_IMAGE_LAST) begin
                             weight_flash_valid_r <= 1'b0;
                         end else begin
                             weight_flash_addr    <= weight_flash_addr + 1'b1;
                             weight_flash_valid_r <= 1'b0;
-                            weight_flash_pending <= 1'b1;   // wait for next ROM byte
+                            weight_flash_pending <= 1'b1;   // chờ byte ROM kế tiếp
                         end
                     end
                 end
@@ -626,7 +623,7 @@ DDR3MI u_ddr3 (
 );
 
 // ---------------------------------------------------------------------------
-// Shared AI core and ROMs
+// Lõi AI dùng chung và các ROM
 // ---------------------------------------------------------------------------
 wire [5:0] hamming_addr;
 wire [7:0] hamming_data;
@@ -694,27 +691,27 @@ biomed_shared_ai_system u_shared_ai (
 );
 
 // ---------------------------------------------------------------------------
-// Phase 5d: Clock-domain crossing AI (sys_clk) -> Display (pixel_clk)
+// Pha 5d: Vượt miền clock từ AI (sys_clk) -> Hiển thị (pixel_clk)
 // ---------------------------------------------------------------------------
-// The OSD overlay runs in pixel_clk. All AI status signals come from sys_clk.
-// Bridging directly into u_osd inputs creates a same-clock-name analysis
-// (worst case under sys_clk constraint) with deep fan-out paths
-// `state[*] -> OSD r/g/b outputs`. Phase 5d inserts proper synchronizers so
-// every signal arriving at u_osd is already in the pixel_clk domain.
+// Lớp phủ OSD chạy ở pixel_clk. Tất cả tín hiệu trạng thái AI đến từ sys_clk.
+// Cầu nối trực tiếp vào đầu vào u_osd tạo ra một phân tích cùng-tên-clock
+// (trường hợp tệ nhất dưới ràng buộc sys_clk) với các đường fan-out sâu
+// `state[*] -> đầu ra r/g/b của OSD`. Pha 5d chèn các bộ đồng bộ đúng cách để
+// mọi tín hiệu tới u_osd đều đã ở miền pixel_clk.
 //
-// Bus type        | CDC primitive       | Atomicity guarantee
-// ----------------|---------------------|---------------------
-// Decision bundle | cdc_bus_handshake   | YES — bundle latched on src_update,
-//   (9-bit)       |                     |   sampled by dst on toggle edge
-// Status flags    | sync_2ff (per bit)  | bits are independent; momentary
-//   (1-bit each)  |                     |   inconsistency between flags is OK
-// Vital signs     | sync_2ff (per bit)  | I2C updates a whole byte per write
-//   (8-bit each)  |                     |   but pixel-rate display is ms-scale
-//                 |                     |   so brief bit-skew is invisible
+// Loại bus       | Khối CDC            | Đảm bảo tính nguyên tử
+// ---------------|---------------------|---------------------
+// Gói quyết định | cdc_bus_handshake   | CÓ — gói được chốt khi src_update,
+//   (9 bit)      |                     |   đích lấy mẫu ở cạnh toggle
+// Cờ trạng thái  | sync_2ff (mỗi bit)  | các bit độc lập; sự không nhất quán
+//   (1 bit mỗi cờ)|                    |   nhất thời giữa các cờ là chấp nhận được
+// Chỉ số sinh tồn| sync_2ff (mỗi bit)  | I2C cập nhật cả byte mỗi lần ghi
+//   (8 bit mỗi cái)|                   |   nhưng hiển thị theo nhịp điểm ảnh ở thang ms
+//                 |                     |   nên lệch bit ngắn là không nhìn thấy
 
 wire [8:0] decision_bundle_src = {final_class, triggered_sensors, confidence};
 wire [8:0] decision_bundle_pix;
-wire       decision_pulse_pix;   // unused but kept in case OSD wants to flash
+wire       decision_pulse_pix;   // không dùng nhưng giữ lại phòng khi OSD muốn nhấp nháy
 
 cdc_bus_handshake #(.WIDTH(9)) u_cdc_decision (
     .src_clk    (sys_clk),
@@ -750,10 +747,10 @@ sync_2ff u_sync_wp_err         (.dst_clk(pixel_clk), .dst_rst_n(pixel_rst_n),
 sync_2ff u_sync_cnn_to_err     (.dst_clk(pixel_clk), .dst_rst_n(pixel_rst_n),
                                 .async_in(cnn_timeout_error),     .sync_out(cnn_timeout_error_pix));
 
-// Vital signs are byte-wide buses written atomically by I2C, but I2C updates
-// at ~1 kHz which is millions of pixel_clk cycles apart. Bit-wise sync is
-// safe because OSD redraws every frame (60 Hz) and any 1-2 pixel-cycle
-// bit-skew is invisible to the eye.
+// Chỉ số sinh tồn là các bus rộng byte được I2C ghi nguyên tử, nhưng I2C cập nhật
+// ở ~1 kHz, tức cách nhau hàng triệu chu kỳ pixel_clk. Đồng bộ theo từng bit là
+// an toàn vì OSD vẽ lại mỗi khung (60 Hz) và bất kỳ lệch bit 1-2 chu kỳ điểm ảnh
+// nào cũng không nhìn thấy bằng mắt.
 wire [7:0] spo2_raw_pix;
 wire [7:0] temp_raw_pix;
 genvar gv;
@@ -766,9 +763,9 @@ generate
     end
 endgenerate
 
-// Augment triggered_sensors with error flags in the PIXEL domain. The OR-mix
-// must happen here (not in sys_clk) so the OSD input is purely pixel-domain
-// and no sys_clk register fans out to the OSD r/g/b registers anymore.
+// Bổ sung các cờ lỗi vào triggered_sensors trong miền PIXEL. Phép trộn-OR
+// phải diễn ra ở đây (không phải ở sys_clk) để đầu vào OSD thuần miền pixel
+// và không còn thanh ghi sys_clk nào fan-out tới các thanh ghi r/g/b của OSD.
 wire [4:0] triggered_sensors_osd = triggered_sensors_pix |
                                    {2'b00,
                                     weight_load_error_pix | weight_prefetch_error_pix | cnn_timeout_error_pix,
@@ -776,7 +773,7 @@ wire [4:0] triggered_sensors_osd = triggered_sensors_pix |
                                     weight_load_done_pix | weights_ready_pix};
 
 // ---------------------------------------------------------------------------
-// Display and debug UART
+// Hiển thị và UART gỡ lỗi
 // ---------------------------------------------------------------------------
 wire [11:0] hcount;
 wire [11:0] vcount;
@@ -800,19 +797,19 @@ vga_timing #(
 
 wire [23:0] wave_pixel;
 
-// ── Waveform source: DECOUPLED from the AI core ──────────────────────────────
-// Previously the traces were driven by the FIFO READ strobes (eeg_fifo_rd), so
-// they only moved while the shared AI core was actively reading a channel -> they
-// went blank whenever the AI core was in reset (boot not done / DDR not ready) or
-// between channels. Drive them from the WRITE stream (replay or live sensor)
-// instead: the monitor traces now always show the acquired signal, all three
-// lanes update together, independent of AI/DDR/boot state.
+// ── Nguồn dạng sóng: TÁCH RỜI khỏi lõi AI ────────────────────────────────────
+// Trước đây các vệt sóng được điều khiển bởi xung ĐỌC FIFO (eeg_fifo_rd), nên
+// chúng chỉ chuyển động khi lõi AI dùng chung đang đọc một kênh -> chúng
+// tắt trắng bất cứ khi nào lõi AI ở trạng thái reset (chưa boot xong / DDR chưa sẵn sàng) hoặc
+// giữa các kênh. Thay vào đó điều khiển chúng từ luồng GHI (phát lại hoặc cảm biến thực):
+// các vệt theo dõi nay luôn hiển thị tín hiệu thu được, cả ba
+// làn cùng cập nhật, độc lập với trạng thái AI/DDR/boot.
 //
-// Scaling: waveform_display expects a centered UINT8 [0..255] (128 = mid-lane).
-// The raw signed int16 sample's high byte [15:8] barely moves for the small test
-// signals (~±200..±550) and rails the beam to the lane edges. Convert signed
-// int16 -> centered uint8 with a ÷4 gain (>>>2). Tune the shift if a live sensor
-// has a very different amplitude.
+// Tỉ lệ: waveform_display kỳ vọng UINT8 căn giữa [0..255] (128 = giữa làn).
+// Byte cao [15:8] của mẫu int16 có dấu thô gần như không nhúc nhích với các tín hiệu
+// kiểm thử nhỏ (~±200..±550) và đẩy tia ra mép làn. Chuyển int16 có dấu
+// -> uint8 căn giữa với hệ số ÷4 (>>>2). Chỉnh lượng dịch nếu một cảm biến thực
+// có biên độ rất khác.
 wire signed [15:0] eeg_wave_sh = $signed(eeg_wr_data) >>> 2;
 wire signed [15:0] ecg_wave_sh = $signed(ecg_wr_data) >>> 2;
 wire signed [15:0] emg_wave_sh = $signed(emg_wr_data) >>> 2;
@@ -850,7 +847,7 @@ osd_overlay u_osd (
     .hcount           (hcount),
     .vcount           (vcount),
     .de               (de),
-    // All inputs below are pixel_clk-domain (see Phase 5d CDC block above).
+    // Tất cả đầu vào bên dưới đều thuộc miền pixel_clk (xem khối CDC Pha 5d ở trên).
     .class_out        (final_class_pix),
     .triggered_sensors(triggered_sensors_osd),
     .confidence       (confidence_pix),
@@ -863,11 +860,11 @@ osd_overlay u_osd (
 );
 
 // ---------------------------------------------------------------------------
-// HDMI sync alignment to the OSD pixel pipeline.
-// The OSD (waveform_display -> osd_overlay) emits r/g/b OSD_PIPE_LATENCY pixel
-// clocks after the (hcount,vcount,de) it was computed from. Delay hs/vs/de by
-// the same amount so the active region and blanking edges stay pixel-perfect at
-// the DVI transmitter. KEEP this equal to osd_overlay's OSD_LATENCY localparam.
+// Căn chỉnh đồng bộ HDMI với pipeline điểm ảnh của OSD.
+// OSD (waveform_display -> osd_overlay) phát r/g/b sau OSD_PIPE_LATENCY chu kỳ
+// pixel_clk so với (hcount,vcount,de) mà nó được tính từ đó. Làm trễ hs/vs/de
+// cùng lượng đó để vùng tích cực và các cạnh blanking khớp chính xác từng điểm ảnh tại
+// bộ phát DVI. GIỮ giá trị này bằng localparam OSD_LATENCY của osd_overlay.
 localparam OSD_PIPE_LATENCY = 5;
 reg [OSD_PIPE_LATENCY-1:0] hs_pipe, vs_pipe, de_pipe;
 always @(posedge pixel_clk or negedge pixel_rst_n) begin
@@ -920,12 +917,12 @@ DVI_TX_Top dvi_tx_i (
 endmodule
 
 // ---------------------------------------------------------------------------
-// replay_rom - DEPTH x 16 single-port ROM with a one-cycle registered read.
-// INIT_FILE is a BARE filename loaded with $readmemh (one 4-char hex value per
-// line). GowinSynthesis resolves it relative to THIS .v's source dir (rtl/top/),
-// so extract_sample.py writes test_{eeg,ecg,emg}.hex into rtl/top/. (Sim resolves
-// relative to the run cwd, where the test harness copies the file.)
-// syn_ramstyle="block_ram" forces BSRAM inference.
+// replay_rom - ROM đơn cổng DEPTH x 16 với đọc có thanh ghi một chu kỳ.
+// INIT_FILE là tên file TRƠ được nạp bằng $readmemh (một giá trị hex 4 ký tự mỗi
+// dòng). GowinSynthesis phân giải nó tương đối với thư mục nguồn của CHÍNH file .v này (rtl/top/),
+// nên extract_sample.py ghi test_{eeg,ecg,emg}.hex vào rtl/top/. (Sim phân giải
+// tương đối với cwd lúc chạy, nơi test harness sao chép file vào.)
+// syn_ramstyle="block_ram" ép suy luận thành BSRAM.
 // ---------------------------------------------------------------------------
 module replay_rom #(
     parameter INIT_FILE = "",
@@ -946,18 +943,18 @@ module replay_rom #(
 endmodule
 
 // ---------------------------------------------------------------------------
-// weight_image_rom - byte-wide ROM containing the packed biomedical weight
-// image generated by tools/pack_weight_image.py. The top-level boot FSM streams
-// this ROM through weight_boot_loader, preserving the manifest CRC validation
-// before DDR3-backed inference is released.
+// weight_image_rom - ROM rộng byte chứa ảnh trọng số y sinh đã đóng gói
+// do software/pack_weight_image.py sinh ra. FSM boot mức trên cùng truyền
+// ROM này qua weight_boot_loader, giữ nguyên việc kiểm tra CRC trong manifest
+// trước khi nhả suy luận dựa trên DDR3.
 //
-// Read is REGISTERED (1-cycle latency). Gowin GW5A BSRAM only supports a
-// registered read port, so an asynchronous `assign dout = mem[addr]` together
-// with syn_ramstyle="block_ram" is contradictory and forces the 32 Kbit image
-// into LUT-based distributed ROM (large, and CLS utilisation is already ~79%).
-// The boot FSM compensates for the extra cycle with a one-cycle `pending` bubble
-// per byte; the manifest CRC check inside weight_boot_loader is the alignment
-// oracle (any off-by-one in the stream fails CRC -> weight_load_error).
+// Đọc CÓ THANH GHI (độ trễ 1 chu kỳ). BSRAM của Gowin GW5A chỉ hỗ trợ một
+// cổng đọc có thanh ghi, nên `assign dout = mem[addr]` bất đồng bộ cùng
+// với syn_ramstyle="block_ram" là mâu thuẫn và ép ảnh 32 Kbit
+// vào ROM phân tán dựa trên LUT (lớn, và mức dùng CLS đã ~79%).
+// FSM boot bù cho chu kỳ thừa bằng một bong bóng `pending` một chu kỳ
+// mỗi byte; phép kiểm CRC trong manifest bên trong weight_boot_loader là bộ
+// xác nhận căn chỉnh (bất kỳ lệch một-bước nào trong luồng đều làm CRC thất bại -> weight_load_error).
 // ---------------------------------------------------------------------------
 module weight_image_rom #(
     parameter INIT_FILE = "",

@@ -8,13 +8,13 @@
 //
 // gowin_pll_sys.v
 // 50 MHz clkin -> 50 MHz clkout0 (sys_clk).
-// Timing closure: relaxed 60 -> 50 MHz. NOTE: relaxing further to 45 MHz BACKFIRED
-// (Gowin's timing-driven placer goes lazy at a loose constraint -> Fmax fell to
-// 41.8 MHz). The real limiter is CONGESTION (CLS ~86%): at 50 MHz the achievable
-// Fmax is ~48.95 MHz. The fix is lowering CLS (trim OSD), not relaxing the clock.
-// CNN/STFT/replay are not real-time. Keep ODIV0_SEL in sync with Final.sdc.
-// PFD  = FCLKIN / IDIV_SEL = 50 / 1 = 50 MHz (range: 19–81.25 MHz)
-// VCO  = FCLKIN * MDIV_SEL / IDIV_SEL = 50 * 18 / 1 = 900 MHz (range: 650–1300 MHz)
+// Đạt định thời (timing closure): nới lỏng 60 -> 50 MHz. LƯU Ý: nới thêm xuống 45 MHz lại PHẢN TÁC DỤNG
+// (bộ đặt chỗ hướng-định-thời của Gowin lơ là khi ràng buộc lỏng -> Fmax tụt xuống
+// 41.8 MHz). Yếu tố giới hạn thực sự là TẮC NGHẼN (CONGESTION) (CLS ~86%): ở 50 MHz, Fmax đạt được
+// là ~48.95 MHz. Cách sửa là giảm CLS (cắt bớt OSD), không phải nới lỏng clock.
+// CNN/STFT/replay không phải thời gian thực. Giữ ODIV0_SEL đồng bộ với Final.sdc.
+// PFD  = FCLKIN / IDIV_SEL = 50 / 1 = 50 MHz (dải: 19–81.25 MHz)
+// VCO  = FCLKIN * MDIV_SEL / IDIV_SEL = 50 * 18 / 1 = 900 MHz (dải: 650–1300 MHz)
 // clkout0 = VCO / ODIV0_SEL = 900 / 18 = 50 MHz
 
 module gowin_pll_sys (lock, clkout0, clkin);

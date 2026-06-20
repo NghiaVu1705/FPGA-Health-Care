@@ -1,27 +1,27 @@
 // stft_top.v ↔ stft_top.py
-// STFT pipeline: accumulate 2048 samples → 32 hops × 64 samples
-// Each hop: Hamming window → FFT 64-pt → magnitude → 32 UINT8 bins
-// Output: 32×32 UINT8 spectrogram (row=time, col=frequency)
+// Pipeline STFT: tích lũy 2048 mẫu → 32 hop × 64 mẫu
+// Mỗi hop: cửa sổ Hamming → FFT 64 điểm → độ lớn → 32 bin UINT8
+// Đầu ra: spectrogram 32×32 UINT8 (hàng=thời gian, cột=tần số)
 //
-// Handshake:
-//   Input:  sample_in (INT16) + sample_valid (1 pulse per sample @ fs)
-//   Output: spec_out (32×32 = 1024 bytes, one byte per cycle)
-//           spec_valid pulses for 1024 cycles when spectrogram ready
-//           spec_ready from cnn_top — backpressure
+// Bắt tay (handshake):
+//   Đầu vào:  sample_in (INT16) + sample_valid (1 xung mỗi mẫu @ fs)
+//   Đầu ra: spec_out (32×32 = 1024 byte, một byte mỗi chu kỳ)
+//           spec_valid phát xung trong 1024 chu kỳ khi spectrogram sẵn sàng
+//           spec_ready từ cnn_top — backpressure (chặn ngược)
 module stft_top (
     input  sys_clk,
     input  rst_n,
 
-    // Sample input (from serial_comm FIFO)
+    // Đầu vào mẫu (từ FIFO serial_comm)
     input  signed [15:0] sample_in,
     input                sample_valid,
 
-    // Spectrogram output (to cnn_top)
+    // Đầu ra spectrogram (tới cnn_top)
     output reg [7:0]  spec_out,
     output reg        spec_valid,
     input             spec_ready,
 
-    // pROM interfaces (connect to gowin_ip instances in parent)
+    // Giao diện pROM (kết nối tới các thực thể gowin_ip trong module cha)
     output [5:0]  hamming_rom_addr,
     input  [7:0]  hamming_rom_data,
     output [4:0]  twiddle_rom_addr,
@@ -61,9 +61,9 @@ function [4:0] norm_shift;
     end
 endfunction
 
-// ── Sample accumulation buffer (2048 INT16) ───────────────────────────────────
-// syn_ramstyle forces Gowin synthesizer to infer BSRAM (2048×16 = 32K bits = 2 blocks).
-// Without this attribute, GowinSynthesis maps large arrays to flip-flops → routing fail.
+// ── Bộ đệm tích lũy mẫu (2048 INT16) ──────────────────────────────────────────
+// syn_ramstyle buộc bộ tổng hợp Gowin suy luận thành BSRAM (2048×16 = 32K bit = 2 khối).
+// Không có thuộc tính này, GowinSynthesis ánh xạ mảng lớn thành flip-flop → lỗi định tuyến.
 (* syn_ramstyle = "block_ram" *) reg signed [15:0] sample_buf [0:2047];
 reg [10:0] samp_cnt;        // 0..2047
 reg        buf_full;
@@ -85,26 +85,26 @@ always @(posedge sys_clk or negedge rst_n) begin
     end
 end
 
-// ── Spectrogram buffer (32×32 UINT8) ─────────────────────────────────────────
+// ── Bộ đệm spectrogram (32×32 UINT8) ─────────────────────────────────────────
 (* syn_ramstyle = "block_ram" *) reg [7:0]  spec_buf [0:1023];
 
-// ── STFT FSM ──────────────────────────────────────────────────────────────────
+// ── FSM của STFT ──────────────────────────────────────────────────────────────
 localparam [2:0]
     ST_IDLE    = 3'd0,
-    ST_HAMMING = 3'd1,   // apply Hamming window to current 64-sample hop
-    ST_FFT     = 3'd2,   // run FFT
-    ST_MAG     = 3'd3,   // compute magnitude
-    ST_NEXT    = 3'd4,   // advance hop counter
-    ST_OUTPUT  = 3'd5;   // stream out 1024 bytes to cnn_top
+    ST_HAMMING = 3'd1,   // áp cửa sổ Hamming lên hop 64 mẫu hiện tại
+    ST_FFT     = 3'd2,   // chạy FFT
+    ST_MAG     = 3'd3,   // tính độ lớn
+    ST_NEXT    = 3'd4,   // tăng bộ đếm hop
+    ST_OUTPUT  = 3'd5;   // truyền ra 1024 byte tới cnn_top
 
 reg [2:0] state;
-reg [4:0] hop;           // 0..31 (32 hops)
-reg [5:0] idx;           // sample index within hop 0..63
+reg [4:0] hop;           // 0..31 (32 hop)
+reg [5:0] idx;           // chỉ số mẫu trong hop 0..63
 
-// ── Hamming windowed samples (64 INT16) ───────────────────────────────────────
+// ── Các mẫu đã áp cửa sổ Hamming (64 INT16) ──────────────────────────────────
 reg signed [15:0] windowed [0:63];
 
-// ── FFT outputs (INT32 Re/Im for 64 bins) ─────────────────────────────────────
+// ── Đầu ra FFT (Re/Im INT32 cho 64 bin) ──────────────────────────────────────
 (* syn_ramstyle = "block_ram" *) reg signed [31:0] fft_re [0:63];
 (* syn_ramstyle = "block_ram" *) reg signed [31:0] fft_im [0:63];
 
@@ -121,18 +121,18 @@ reg signed [15:0]  fft_x_mux;
 reg [5:0]          fft_bin_cnt;
 integer            ci_fft;
 
-// ── Magnitude outputs (UINT8 for bins 0..31) ──────────────────────────────────
+// ── Đầu ra độ lớn (UINT8 cho bin 0..31) ──────────────────────────────────────
 reg [7:0] mag [0:31];
-reg        fft_done_d;  // 1-cycle delay: aligns fft_done with state==ST_MAG
+reg        fft_done_d;  // trễ 1 chu kỳ: căn fft_done với state==ST_MAG
 
-// ── Output counter ────────────────────────────────────────────────────────────
+// ── Bộ đếm đầu ra ─────────────────────────────────────────────────────────────
 reg [9:0] out_cnt;
 
-// ── Submodule instantiation ───────────────────────────────────────────────────
-// hamming_window, fft_radix2_64, magnitude_calc are driven sequentially
-// by the STFT FSM below.
+// ── Khởi tạo module con ───────────────────────────────────────────────────────
+// hamming_window, fft_radix2_64, magnitude_calc được điều khiển tuần tự
+// bởi FSM STFT bên dưới.
 
-// ── Inline Hamming (simple: one multiply per cycle) ──────────────────────────
+// ── Hamming nội tuyến (đơn giản: một phép nhân mỗi chu kỳ) ────────────────────
 reg [6:0] hw_cnt;
 reg       hw_done;
 reg       hw_running;
@@ -158,7 +158,7 @@ always @(posedge sys_clk or negedge rst_n) begin
                 sample_rd_addr <= {hop, hw_cnt_next};
             sample_rd_data <= sample_buf[sample_rd_addr];
 
-            // 1-cycle RAM/ROM latency: apply on cycle after address
+            // Độ trễ RAM/ROM 1 chu kỳ: áp dụng ở chu kỳ sau địa chỉ
             if (hw_cnt > 0) begin
                 windowed[hw_cnt_prev] <=
                     $signed(sample_rd_data) *
@@ -174,7 +174,7 @@ always @(posedge sys_clk or negedge rst_n) begin
     end
 end
 
-// ── FFT core ─────────────────────────────────────────────────────────────────
+// ── Lõi FFT ──────────────────────────────────────────────────────────────────
 reg fft_running;
 
 assign twiddle_rom_addr = fft_twiddle_w;
@@ -248,12 +248,12 @@ always @(posedge sys_clk or negedge rst_n) begin : fft_capture
     end
 end
 
-// ── Inline magnitude (alpha-max, bins 0..31) — sequential 1 bin/cycle ────────
-// CRITICAL PATH FIX: the old for-loop unrolled to 38 logic levels (28 MHz).
-// Sequential version: 1 bin/cycle → ~6 logic levels → 100+ MHz achievable.
+// ── Độ lớn nội tuyến (alpha-max, bin 0..31) — tuần tự 1 bin/chu kỳ ────────────
+// SỬA ĐƯỜNG TỚI HẠN: vòng for cũ bị triển khai phẳng thành 38 mức logic (28 MHz).
+// Phiên bản tuần tự: 1 bin/chu kỳ → ~6 mức logic → đạt được 100+ MHz.
 reg mag_done;
-reg mag_pass1;  // Pass 1 running: compute alpha-max per bin
-reg mag_pass2;  // Pass 2 running: normalize per bin
+reg mag_pass1;  // Lượt 1 đang chạy: tính alpha-max cho mỗi bin
+reg mag_pass2;  // Lượt 2 đang chạy: chuẩn hóa mỗi bin
 reg [4:0] mag_cnt;
 reg [31:0] max_mag_r;
 reg [4:0]  sh_r;
@@ -271,8 +271,8 @@ wire [31:0] mag_mn_w     = (mag_abs_re_w >= mag_abs_im_w) ? mag_abs_im_w : mag_a
 wire [31:0] mag_m_w      = mag_mx_w + (mag_mn_w >> 1);
 wire [31:0] max_next_w   = (mag_m_r > max_mag_r) ? mag_m_r : max_mag_r;
 
-// fft_done (wire) fires the same cycle as ST_FFT→ST_MAG transition.
-// Delay by 1 cycle so it aligns with state==ST_MAG.
+// fft_done (wire) kích hoạt cùng chu kỳ với chuyển trạng thái ST_FFT→ST_MAG.
+// Trễ 1 chu kỳ để nó căn với state==ST_MAG.
 always @(posedge sys_clk or negedge rst_n) begin
     if (!rst_n) fft_done_d <= 1'b0;
     else        fft_done_d <= fft_done;
@@ -297,7 +297,7 @@ always @(posedge sys_clk or negedge rst_n) begin
         mag_done <= 0;
 
         if (state == ST_MAG && fft_done_d && !mag_pass1 && !mag_pass2) begin
-            // Start Pass 1 on first cycle of ST_MAG
+            // Bắt đầu Lượt 1 ở chu kỳ đầu tiên của ST_MAG
             mag_pass1      <= 1'b1;
             mag_cnt        <= 5'd0;
             max_mag_r      <= 32'd0;
@@ -306,8 +306,8 @@ always @(posedge sys_clk or negedge rst_n) begin
             mag_calc_valid  <= 1'b0;
             mag_calc_last   <= 1'b0;
         end else if (mag_pass1) begin
-            // Pass 1 pipeline:
-            //   fetch FFT bin -> compute alpha-max -> update max/mag buffer.
+            // Pipeline Lượt 1:
+            //   nạp bin FFT -> tính alpha-max -> cập nhật bộ đệm max/mag.
             if (mag_calc_valid && mag_calc_last) begin
                 mag[mag_calc_idx] <= mag_m_r[7:0];
                 max_mag_r         <= max_next_w;
@@ -341,7 +341,7 @@ always @(posedge sys_clk or negedge rst_n) begin
                 end
             end
         end else if (mag_pass2) begin
-            // Pass 2: one bin per cycle — normalize to [0,127]
+            // Lượt 2: một bin mỗi chu kỳ — chuẩn hóa về [0,127]
             tmp_r = {24'd0, mag[mag_cnt]} >> sh_r;
             mag[mag_cnt] <= (tmp_r > 32'd127) ? 8'd127 : tmp_r[7:0];
             spec_buf[{hop, mag_cnt}] <= (tmp_r > 32'd127) ? 8'd127 : tmp_r[7:0];

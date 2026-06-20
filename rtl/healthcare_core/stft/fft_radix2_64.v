@@ -1,55 +1,55 @@
 // fft_radix2_64.v ↔ fft_radix2_64.py
-// 64-point Radix-2 DIT FFT, in-place, 6 stages.
+// FFT 64 điểm Radix-2 DIT, tại chỗ (in-place), 6 tầng.
 //
-// Fixed-point:
-//   Input: INT16[64] (windowed samples)
-//   Twiddle: Q1.14 packed {Im[15:0], Re[15:0]} from pROM (32 entries)
-//   Butterfly multiply: INT64 intermediate → >>> 14
-//   Stage scaling: >>> 1 after each stage (block floating-point)
-//   Output: INT32 Re[64] + Im[64]
+// Dấu phẩy tĩnh (fixed-point):
+//   Đầu vào: INT16[64] (các mẫu đã áp cửa sổ)
+//   Twiddle: Q1.14 đóng gói {Im[15:0], Re[15:0]} từ pROM (32 phần tử)
+//   Phép nhân butterfly: trung gian INT64 → >>> 14
+//   Tỉ lệ theo tầng: >>> 1 sau mỗi tầng (block floating-point)
+//   Đầu ra: INT32 Re[64] + Im[64]
 //
-// Bit-reversal: 6-bit reversal applied to input order (hardwired permutation).
-// Latency: load 64 cycles + 6 × 32 butterflies × 4 pipeline cycles + copy-out.
+// Đảo bit: đảo 6 bit áp lên thứ tự đầu vào (hoán vị nối cứng).
+// Độ trễ: nạp 64 chu kỳ + 6 × 32 butterfly × 4 chu kỳ pipeline + sao chép ra.
 //
-// DSP18 usage: 4 multipliers per butterfly (re×re, im×im, re×im, im×re).
-// Time-multiplexed: process 1 butterfly through a four-cycle pipeline.
+// Sử dụng DSP18: 4 bộ nhân mỗi butterfly (re×re, im×im, re×im, im×re).
+// Ghép kênh theo thời gian: xử lý 1 butterfly qua pipeline bốn chu kỳ.
 module fft_radix2_64 (
     input  sys_clk,
     input  rst_n,
 
-    // Input: 64 windowed INT16 samples, presented sequentially
+    // Đầu vào: 64 mẫu INT16 đã áp cửa sổ, đưa vào tuần tự
     input  signed [15:0] x_in,
-    input                x_valid,     // pulse 64 times to load frame
-    input                frame_start, // pulse before first x_valid
+    input                x_valid,     // phát xung 64 lần để nạp khung
+    input                frame_start, // phát xung trước x_valid đầu tiên
 
-    // Output: serial INT32 Re/Im, one bin per clock during copy-out
+    // Đầu ra: Re/Im INT32 nối tiếp, một bin mỗi chu kỳ trong lúc sao chép ra
     output reg signed [31:0] re_out,
     output reg signed [31:0] im_out,
     output reg               bin_valid,
     output reg               frame_done,
 
-    // pROM interface, driven by the parent IP instance
+    // Giao diện pROM, được điều khiển bởi thực thể IP cha
     output [4:0]             twiddle_addr_out,
     input  [31:0]            twiddle_data
 );
 
-// ── Twiddle ROM interface ─────────────────────────────────────────────────────
+// ── Giao diện ROM twiddle ─────────────────────────────────────────────────────
 reg  [4:0]  twiddle_addr;
 
 wire signed [15:0] w_re = $signed(twiddle_data[15:0]);
 wire signed [15:0] w_im = $signed(twiddle_data[31:16]);
 
-// ── Internal working buffer (64×32 = 2K bits each — infer as BSRAM) ──────────
+// ── Bộ đệm làm việc nội bộ (mỗi cái 64×32 = 2K bit — suy luận thành BSRAM) ────
 (* syn_ramstyle = "block_ram" *) reg signed [31:0] buf_re [0:63];
 (* syn_ramstyle = "block_ram" *) reg signed [31:0] buf_im [0:63];
 
-// ── Bit-reversal LUT (6-bit reversal for N=64) ───────────────────────────────
+// ── LUT đảo bit (đảo 6 bit cho N=64) ─────────────────────────────────────────
 function [5:0] bit_rev6;
     input [5:0] x;
     bit_rev6 = {x[0],x[1],x[2],x[3],x[4],x[5]};
 endfunction
 
-// ── State registers ───────────────────────────────────────────────────────────
+// ── Thanh ghi trạng thái ──────────────────────────────────────────────────────
 reg [5:0] load_cnt;
 reg       loading;
 reg       do_fft;
@@ -68,7 +68,7 @@ localparam [1:0]
     PH_SUM   = 2'd2,
     PH_WRITE = 2'd3;
 
-// ── Butterfly parameters from small counters, then registered by PH_FETCH ────
+// ── Tham số butterfly từ các bộ đếm nhỏ, rồi đưa vào thanh ghi bởi PH_FETCH ───
 wire [5:0] stride_w     = (6'd1 << stage);
 wire [5:0] group_base_w = group_i << (stage + 3'd1);
 wire [5:0] a_idx_w      = group_base_w + pair_i;
@@ -80,7 +80,7 @@ wire [5:0] groups_w     = (6'd32 >> stage);
 wire       last_pair_w  = (pair_i == (stride_w - 6'd1));
 wire       last_group_w = (group_i == (groups_w - 6'd1));
 
-// ── Butterfly math pipeline ──────────────────────────────────────────────────
+// ── Pipeline tính toán butterfly ─────────────────────────────────────────────
 reg signed [63:0] p_bre_wre_r;
 reg signed [63:0] p_bim_wim_r;
 reg signed [63:0] p_bre_wim_r;
@@ -91,7 +91,7 @@ reg signed [31:0] t_im_r;
 wire signed [63:0] t_re_full_w = p_bre_wre_r - p_bim_wim_r;
 wire signed [63:0] t_im_full_w = p_bre_wim_r + p_bim_wre_r;
 
-// ── Unified always block — single driver for buf_re, buf_im, and all state ───
+// ── Khối always hợp nhất — driver duy nhất cho buf_re, buf_im và mọi trạng thái ─
 always @(posedge sys_clk) begin : fft_core
     if (!rst_n) begin
         load_cnt     <= 6'd0;
@@ -131,7 +131,7 @@ always @(posedge sys_clk) begin : fft_core
             copy_out <= 1'b0;
         end
 
-        // ── Load phase: fill buf with bit-reversed input ──────────────────
+        // ── Pha nạp: lấp buf bằng đầu vào đã đảo bit ──────────────────────
         if (loading && x_valid) begin
             buf_re[bit_rev6(load_cnt)] <= {{16{x_in[15]}}, x_in};
             buf_im[bit_rev6(load_cnt)] <= 32'd0;
@@ -146,7 +146,7 @@ always @(posedge sys_clk) begin : fft_core
             load_cnt <= load_cnt + 6'd1;
         end
 
-        // ── Butterfly phase: fetch, multiply, sum, writeback ──────────────
+        // ── Pha butterfly: nạp, nhân, cộng, ghi lại ───────────────────────
         if (do_fft) begin
             case (bfly_phase)
                 PH_FETCH: begin
@@ -202,7 +202,7 @@ always @(posedge sys_clk) begin : fft_core
             endcase
         end
 
-        // ── Copy output phase: stream buf to re_out/im_out ────────────────
+        // ── Pha sao chép đầu ra: truyền buf ra re_out/im_out ──────────────
         if (copy_out) begin
             re_out    <= buf_re[copy_cnt];
             im_out    <= buf_im[copy_cnt];

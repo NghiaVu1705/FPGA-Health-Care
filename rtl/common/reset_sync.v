@@ -1,6 +1,6 @@
-// reset_sync.v — 2-FF asynchronous reset synchronizer
-// Releases reset synchronously on rising edge of clk.
-// rst_async_n: tie to (pll_lock & button_n)
+// reset_sync.v — bộ đồng bộ reset bất đồng bộ dùng 2-FF
+// Nhả reset một cách đồng bộ tại cạnh lên của clk.
+// rst_async_n: nối với (pll_lock & button_n)
 module reset_sync #(
     parameter STAGES = 2
 )(

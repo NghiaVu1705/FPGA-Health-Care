@@ -3,9 +3,11 @@
 #
 # Why: the first P&R (HDMI-only SDC) reported false CDC violations. Each clock
 # meets its own Fmax (clk 275, sys_clk 60, pixel 73.5, DDR PLL/fclkdiv ok), so
-# ALL violations are cross-domain paths through CDC synchronisers (2-FF,
-# cdc_bus_handshake, gray-coded FIFO pointers). The fix is to declare every
-# clock and put the domains in asynchronous groups.
+# ALL violations are cross-domain paths through the CDC synchronisers (2-FF
+# sync_2ff + cdc_bus_handshake toggle). The fix is to declare every clock and
+# put the domains in asynchronous groups. NOTE: the sample buffers (sync_fifo)
+# are SINGLE-CLOCK (all on sys_clk), so they are NOT a CDC crossing; the only
+# real user-logic CDC is sys_clk -> pixel_clk through cdc_bus_handshake/sync_2ff.
 #
 # Gowin notes (learned the hard way):
 #   * Every command must be on ONE physical line (no '\' continuation).
@@ -43,3 +45,12 @@ create_generated_clock -name clk_ddr_phy -source [get_ports {clk}] -master_clock
 # model its internal DLL timing exactly, so we do not analyse PLL<->fclkdiv
 # crossings. No user-logic path is affected (those are all already clean).
 set_clock_groups -asynchronous -group [get_clocks {clk}] -group [get_clocks {sys_clk}] -group [get_clocks {clk_tmds_5x}] -group [get_clocks {clk_pixel}] -group [get_clocks {clk_ddr}] -group [get_clocks {clk_ddr_phy}]
+
+# CDC datapath rigor (sys_clk -> pixel_clk, the only real user-logic crossing).
+# The decision bundle crosses via u_cdc_decision (toggle handshake + 2-FF): the
+# data bus src_data_r[*] is quasi-static and structurally safe. The async clock
+# group above already removes this arc from analysis; to instead BOUND the data
+# bus to one pixel_clk period (~13.6 ns) for skew rigor, enable the line below
+# AFTER confirming the Gowin SDC parser accepts the register reference (Gowin STA
+# may subsume it under the async group; remove if it errors on re-P&R):
+# set_max_delay 13.6 -from [get_pins {u_cdc_decision/src_data_r[*]/Q}] -to [get_pins {u_cdc_decision/dst_data[*]/D}]

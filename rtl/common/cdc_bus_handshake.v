@@ -1,53 +1,54 @@
 `default_nettype none
-// cdc_bus_handshake.v - multi-bit CDC bridge with toggle-handshake.
+// cdc_bus_handshake.v - cầu CDC nhiều bit dùng cơ chế bắt tay bằng toggle.
 //
-// Use this when the multi-bit `src_data` bus updates atomically and the
-// destination must see a coherent snapshot — i.e., never observe partial
-// updates from skew between bits in a bit-wise 2-FF scheme.
+// Dùng module này khi bus nhiều bit `src_data` được cập nhật nguyên tử (atomic) và
+// miền nhận phải thấy một ảnh chụp (snapshot) nhất quán — tức là không bao giờ quan
+// sát được trạng thái cập nhật dở dang do lệch pha (skew) giữa các bit như trong sơ
+// đồ 2-FF theo từng bit.
 //
-// Operation:
-//   1. Source asserts a 1-cycle `src_update` pulse while `src_data` is valid.
-//   2. Source latches `src_data -> src_data_r` and toggles a 1-bit `src_toggle`
-//      register on that same cycle.
-//   3. `src_toggle` is synchronized into the destination clock domain through
-//      a 2-FF synchronizer (`sync_2ff`).
-//   4. Destination detects an edge on the synchronized toggle and samples
-//      `src_data_r` directly. Because `src_update` pulses much less frequently
-//      than `dst_clk`, `src_data_r` is quasi-static (held many src_clk cycles)
-//      by the time the destination samples it — no metastability hazard on
-//      the data bits themselves.
-//   5. Destination registers the sampled data into `dst_data` and pulses
-//      `dst_update` for one `dst_clk` cycle.
+// Nguyên lý hoạt động:
+//   1. Nguồn phát một xung `src_update` rộng 1 chu kỳ khi `src_data` hợp lệ.
+//   2. Nguồn chốt `src_data -> src_data_r` và đảo (toggle) thanh ghi 1 bit
+//      `src_toggle` ngay trong chu kỳ đó.
+//   3. `src_toggle` được đồng bộ sang miền clock đích qua bộ đồng bộ 2-FF
+//      (`sync_2ff`).
+//   4. Đích phát hiện cạnh trên tín hiệu toggle đã đồng bộ và lấy mẫu
+//      `src_data_r` trực tiếp. Vì `src_update` phát xung thưa hơn nhiều so với
+//      `dst_clk`, nên `src_data_r` gần như tĩnh (được giữ qua nhiều chu kỳ src_clk)
+//      tại thời điểm đích lấy mẫu — không có nguy cơ metastability trên chính các
+//      bit dữ liệu.
+//   5. Đích ghi dữ liệu đã lấy mẫu vào `dst_data` và phát xung `dst_update`
+//      trong một chu kỳ `dst_clk`.
 //
-// Constraints:
-//   - The source must hold its update rate below
+// Ràng buộc:
+//   - Nguồn phải giữ tốc độ cập nhật thấp hơn
 //        f_update_max < f_dst_clk / (2 + sync_stages)
-//     so the toggle is not missed. For this project (decision_update at sys_clk
-//     ~100 MHz max but actually fires only per inference cycle, ~kHz; vitals
-//     update at I2C speed, ~kHz) the constraint is trivially satisfied vs
+//     để không bỏ sót toggle. Với dự án này (decision_update ở sys_clk
+//     tối đa ~100 MHz nhưng thực tế chỉ kích hoạt mỗi chu kỳ suy luận, ~kHz; chỉ số
+//     sinh tồn cập nhật theo tốc độ I2C, ~kHz) ràng buộc này thỏa mãn rất dễ so với
 //     pixel_clk (~74 MHz).
-//   - `src_data_r` is exported as a `(* syn_keep *)` register so the
-//     synthesizer doesn't collapse it.
-//   - In a Gowin SDC, the AI-side `src_data_r[*]` to OSD-side `dst_data[*]`
-//     path should be declared as either `set_clock_groups -asynchronous`
-//     between sys_clk and pixel_clk or as `set_max_delay` matching the slower
-//     period. See `asic/asic_constraints.sdc` / TMDS_60HZ.sdc for the actual
-//     declaration.
+//   - `src_data_r` được xuất ra dưới dạng thanh ghi `(* syn_keep *)` để bộ tổng hợp
+//     không lược bỏ nó.
+//   - Trong SDC của Gowin, đường từ phía AI `src_data_r[*]` sang phía OSD `dst_data[*]`
+//     nên được khai báo hoặc là `set_clock_groups -asynchronous`
+//     giữa sys_clk và pixel_clk, hoặc là `set_max_delay` khớp với chu kỳ chậm
+//     hơn. Xem `asic/asic_constraints.sdc` / TMDS_60HZ.sdc để biết khai báo thực
+//     tế.
 module cdc_bus_handshake #(
     parameter WIDTH = 8
 )(
     input  wire             src_clk,
     input  wire             src_rst_n,
     input  wire [WIDTH-1:0] src_data,
-    input  wire             src_update,    // 1-cycle pulse: new data ready
+    input  wire             src_update,    // xung 1 chu kỳ: dữ liệu mới sẵn sàng
 
     input  wire             dst_clk,
     input  wire             dst_rst_n,
     output reg  [WIDTH-1:0] dst_data,
-    output reg              dst_update     // 1-cycle pulse: new data latched
+    output reg              dst_update     // xung 1 chu kỳ: đã chốt dữ liệu mới
 );
 
-// ---- Source domain: latch data + toggle ----
+// ---- Miền nguồn: chốt dữ liệu + đảo toggle ----
 (* syn_keep = 1, syn_preserve = 1 *)
 reg [WIDTH-1:0] src_data_r;
 (* syn_keep = 1, syn_preserve = 1 *)
@@ -63,7 +64,7 @@ always @(posedge src_clk or negedge src_rst_n) begin
     end
 end
 
-// ---- Cross-clock 2-FF synchronizer on the toggle bit ----
+// ---- Bộ đồng bộ 2-FF qua miền clock trên bit toggle ----
 wire toggle_sync;
 sync_2ff #(.STAGES(2), .INIT_VALUE(1'b0)) u_toggle_sync (
     .dst_clk   (dst_clk),
@@ -72,7 +73,7 @@ sync_2ff #(.STAGES(2), .INIT_VALUE(1'b0)) u_toggle_sync (
     .sync_out  (toggle_sync)
 );
 
-// ---- Destination domain: detect toggle change, latch quasi-static data ----
+// ---- Miền đích: phát hiện thay đổi toggle, chốt dữ liệu gần như tĩnh ----
 reg toggle_sync_d;
 wire toggle_edge = toggle_sync ^ toggle_sync_d;
 

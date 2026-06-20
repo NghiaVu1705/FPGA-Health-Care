@@ -1,10 +1,10 @@
 // global_maxpool_unit.v ↔ global_maxpool_unit.py
-// Max over all H×W spatial positions per channel.
-// Input: serial 8×8×16 (after block2 + maxpool2)
-// Output: INT16[16] — max per channel
+// Lấy giá trị lớn nhất trên tất cả vị trí không gian H×W theo từng kênh.
+// Đầu vào: nối tiếp 8×8×16 (sau block2 + maxpool2)
+// Đầu ra: INT16[16] — giá trị lớn nhất mỗi kênh
 //
-// RTL: comparator reduce-tree, no shift needed (GlobalMaxPool, not GlobalAvgPool).
-// CNN_GAP_SHIFT_LEGACY is NOT used here.
+// RTL: cây rút gọn bằng bộ so sánh, không cần dịch bit (GlobalMaxPool, không phải GlobalAvgPool).
+// CNN_GAP_SHIFT_LEGACY KHÔNG được dùng ở đây.
 module global_maxpool_unit #(
     parameter C = 16,
     parameter H = 8,
@@ -13,11 +13,11 @@ module global_maxpool_unit #(
     input  sys_clk,
     input  rst_n,
 
-    input  [(C*16)-1:0] x_in,   // INT16 one spatial position, all channels
+    input  [(C*16)-1:0] x_in,   // INT16 một vị trí không gian, tất cả các kênh
     input         x_valid,
     input         frame_start,
 
-    output reg [(C*16)-1:0] gap_out,  // max per channel
+    output reg [(C*16)-1:0] gap_out,  // giá trị lớn nhất mỗi kênh
     output reg        gap_valid
 );
 

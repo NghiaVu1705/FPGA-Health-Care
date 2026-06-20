@@ -1,17 +1,17 @@
 `default_nettype none
-// crc32.v - byte-streaming CRC32 (IEEE 802.3, reflected).
+// crc32.v - CRC32 dạng luồng theo byte (IEEE 802.3, đảo bit - reflected).
 //
-// Matches Python's binascii.crc32 and zlib.crc32:
-//   polynomial 0xEDB88320 (reflected of 0x04C11DB7)
-//   initial value 0xFFFFFFFF
-//   final XOR with 0xFFFFFFFF
+// Khớp với binascii.crc32 và zlib.crc32 của Python:
+//   đa thức 0xEDB88320 (bản đảo bit của 0x04C11DB7)
+//   giá trị khởi tạo 0xFFFFFFFF
+//   XOR cuối cùng với 0xFFFFFFFF
 //
-// Usage:
-//   - assert `clear` for one cycle to reset CRC accumulator before a new stream
-//   - assert `data_valid` with byte on `data` for each byte to include
-//   - `crc` is the post-XOR (i.e. value to compare against expected) and is
-//     valid combinationally; sample it the cycle AFTER the last byte was
-//     consumed.
+// Cách dùng:
+//   - bật `clear` một chu kỳ để reset bộ tích lũy CRC trước một luồng mới
+//   - bật `data_valid` cùng với byte trên `data` cho mỗi byte cần đưa vào
+//   - `crc` là giá trị sau XOR (tức giá trị để so sánh với kỳ vọng) và hợp lệ
+//     theo tổ hợp (combinational); hãy lấy mẫu nó ở chu kỳ NGAY SAU khi byte
+//     cuối cùng được tiêu thụ.
 module crc32 (
     input  wire        sys_clk,
     input  wire        rst_n,

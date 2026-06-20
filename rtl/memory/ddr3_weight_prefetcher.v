@@ -1,8 +1,8 @@
-// ddr3_weight_prefetcher.v - read a 512-byte CNN weight tile from DDR3.
+// ddr3_weight_prefetcher.v - đọc một ô (tile) trọng số CNN 512 byte từ DDR3.
 //
-// One CNN model is 512 bytes in the current packed image. This block issues
-// 16 native DDR3 read commands, accepts 16 x 256-bit return beats, and writes
-// them into a byte-addressed local cache.
+// Một mô hình CNN là 512 byte trong ảnh đóng gói hiện tại. Khối này phát ra
+// 16 lệnh đọc DDR3 native, nhận 16 nhịp trả về 256 bit, và ghi
+// chúng vào một cache cục bộ đánh địa chỉ theo byte.
 module ddr3_weight_prefetcher #(
     parameter CMD_READ = 3'b001,
     parameter BEATS    = 16

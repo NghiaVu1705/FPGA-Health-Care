@@ -1,27 +1,33 @@
-// i2c_slave.v — I²C standard-mode slave (100 kHz)
-// Register map:
+// i2c_slave.v — slave I²C chế độ chuẩn (100 kHz)
+// Bản đồ thanh ghi:
 //   0x00: spo2_raw  (UINT8, [0..100] %)
 //   0x01: temp_raw  (UINT8, 0.5°C/LSB; 72=36.0°C)
 //
-// Protocol: Master writes register address then data.
-// 7-bit slave address = I2C_ADDR (default 0x48).
+// Giao thức: Master ghi địa chỉ thanh ghi rồi đến dữ liệu.
+// Địa chỉ slave 7 bit = I2C_ADDR (mặc định 0x48).
+//
+// Định thời ACK: slave kéo SDA xuống thấp trong TOÀN BỘ xung SCL thứ 9 — nó bắt
+// đầu điều khiển ở cạnh xuống SCL thứ 8 (sau khi master nhả SDA), giữ
+// qua mức cao SCL thứ 9, và nhả ở cạnh xuống SCL thứ 9. Do đó một master thật
+// lấy mẫu ACK khi SCL ở mức cao sẽ đọc được 0. Trạng thái ACK cũng
+// tiêu thụ trọn chu kỳ thứ 9, nên luồng bit của byte kế tiếp vẫn căn đúng.
 module i2c_slave #(
     parameter I2C_ADDR = 7'h48
 )(
     input  sys_clk,
     input  rst_n,
 
-    // I²C pins
+    // Các chân I²C
     input  scl,
     inout  sda,
 
-    // Register outputs
+    // Đầu ra thanh ghi
     output reg [7:0] spo2_raw,
     output reg [7:0] temp_raw,
-    output reg       data_updated  // 1-cycle pulse when new data written
+    output reg       data_updated  // xung 1 chu kỳ khi có dữ liệu mới được ghi
 );
 
-// ── Synchronize I²C inputs ────────────────────────────────────────────────────
+// ── Đồng bộ các đầu vào I²C ───────────────────────────────────────────────────
 
 reg scl_d0, scl_d1, scl_d2;
 reg sda_d0, sda_d1, sda_d2;
@@ -38,8 +44,8 @@ end
 
 wire scl_rise   = ( scl_d1 & ~scl_d2);
 wire scl_fall   = (~scl_d1 &  scl_d2);
-wire sda_start  = (~sda_d1 &  sda_d2 &  scl_d1);  // SDA fall while SCL high
-wire sda_stop   = ( sda_d1 & ~sda_d2 &  scl_d1);  // SDA rise while SCL high
+wire sda_start  = (~sda_d1 &  sda_d2 &  scl_d1);  // SDA xuống khi SCL ở mức cao
+wire sda_stop   = ( sda_d1 & ~sda_d2 &  scl_d1);  // SDA lên khi SCL ở mức cao
 
 // ── FSM ──────────────────────────────────────────────────────────────────────
 
@@ -58,31 +64,39 @@ reg [7:0] addr_byte;
 reg [7:0] data_byte;
 reg [2:0] bit_cnt;
 reg [7:0] reg_addr;
-reg       sda_oe;    // output enable (pull SDA low for ACK)
+reg       ack_drive;     // giữ kéo SDA xuống thấp suốt cả chu kỳ ACK (thứ 9)
+reg       ack_clk_rose;  // đã thấy cạnh lên SCL thứ 9 trong một trạng thái ACK
 
-assign sda = sda_oe ? 1'b0 : 1'bz;
+assign sda = ack_drive ? 1'b0 : 1'bz;
+
+// Cạnh xuống SCL thứ 9 trong trạng thái ACK (chỉ sau cạnh lên của nó): ACK xong.
+wire ack_complete = ack_clk_rose && scl_fall;
 
 always @(posedge sys_clk or negedge rst_n) begin
     if (!rst_n) begin
-        state       <= ST_IDLE;
-        shift_reg   <= 8'd0;
-        addr_byte   <= 8'd0;
-        data_byte   <= 8'd0;
-        bit_cnt     <= 3'd0;
-        reg_addr    <= 8'd0;
-        sda_oe      <= 1'b0;
-        data_updated<= 1'b0;
-        spo2_raw    <= 8'd98;   // default: SpO2=98%, Temp=36.0°C
-        temp_raw    <= 8'd72;
+        state        <= ST_IDLE;
+        shift_reg    <= 8'd0;
+        addr_byte    <= 8'd0;
+        data_byte    <= 8'd0;
+        bit_cnt      <= 3'd0;
+        reg_addr     <= 8'd0;
+        ack_drive    <= 1'b0;
+        ack_clk_rose <= 1'b0;
+        data_updated <= 1'b0;
+        spo2_raw     <= 8'd98;   // mặc định: SpO2=98%, Temp=36.0°C
+        temp_raw     <= 8'd72;
     end else begin
         data_updated <= 1'b0;
-        sda_oe <= 1'b0;
 
         if (sda_start) begin
-            state   <= ST_ADDR;
-            bit_cnt <= 3'd0;
+            state        <= ST_ADDR;
+            bit_cnt      <= 3'd0;
+            ack_drive    <= 1'b0;
+            ack_clk_rose <= 1'b0;
         end else if (sda_stop) begin
-            state <= ST_IDLE;
+            state        <= ST_IDLE;
+            ack_drive    <= 1'b0;
+            ack_clk_rose <= 1'b0;
         end else begin
             case (state)
                 ST_IDLE: begin
@@ -101,14 +115,15 @@ always @(posedge sys_clk or negedge rst_n) begin
                     end
                 end
                 ST_ACK_A: begin
-                    // ACK if address matches (ignore R/W bit)
-                    if (scl_fall) begin
-                        if (addr_byte[7:1] == I2C_ADDR) begin
-                            sda_oe <= 1'b1;  // pull SDA low (ACK)
-                            state  <= ST_REG;
-                        end else begin
-                            state <= ST_IDLE;
-                        end
+                    // Chỉ ACK nếu địa chỉ khớp (bỏ qua bit R/W).
+                    if (scl_fall && !ack_clk_rose)
+                        ack_drive <= (addr_byte[7:1] == I2C_ADDR);
+                    if (scl_rise)
+                        ack_clk_rose <= 1'b1;
+                    if (ack_complete) begin
+                        ack_drive    <= 1'b0;
+                        ack_clk_rose <= 1'b0;
+                        state <= (addr_byte[7:1] == I2C_ADDR) ? ST_REG : ST_IDLE;
                     end
                 end
                 ST_REG: begin
@@ -124,9 +139,14 @@ always @(posedge sys_clk or negedge rst_n) begin
                     end
                 end
                 ST_ACK_R: begin
-                    if (scl_fall) begin
-                        sda_oe <= 1'b1;
-                        state  <= ST_DATA;
+                    if (scl_fall && !ack_clk_rose)
+                        ack_drive <= 1'b1;
+                    if (scl_rise)
+                        ack_clk_rose <= 1'b1;
+                    if (ack_complete) begin
+                        ack_drive    <= 1'b0;
+                        ack_clk_rose <= 1'b0;
+                        state        <= ST_DATA;
                     end
                 end
                 ST_DATA: begin
@@ -142,8 +162,13 @@ always @(posedge sys_clk or negedge rst_n) begin
                     end
                 end
                 ST_ACK_D: begin
-                    if (scl_fall) begin
-                        sda_oe <= 1'b1;
+                    if (scl_fall && !ack_clk_rose)
+                        ack_drive <= 1'b1;
+                    if (scl_rise)
+                        ack_clk_rose <= 1'b1;
+                    if (ack_complete) begin
+                        ack_drive    <= 1'b0;
+                        ack_clk_rose <= 1'b0;
                         case (reg_addr)
                             8'h00: begin
                                 spo2_raw     <= data_byte;
@@ -162,12 +187,13 @@ always @(posedge sys_clk or negedge rst_n) begin
                 end
 
                 default: begin
-                    state     <= ST_IDLE;
-                    bit_cnt   <= 3'd0;
-                    shift_reg <= 8'd0;
-                    addr_byte <= 8'd0;
-                    data_byte <= 8'd0;
-                    sda_oe    <= 1'b0;
+                    state        <= ST_IDLE;
+                    bit_cnt      <= 3'd0;
+                    shift_reg    <= 8'd0;
+                    addr_byte    <= 8'd0;
+                    data_byte    <= 8'd0;
+                    ack_drive    <= 1'b0;
+                    ack_clk_rose <= 1'b0;
                 end
             endcase
         end

@@ -1,37 +1,37 @@
 // fc_layer.v ↔ fc_layer.py
-// Fully-connected C_IN→C_OUT, INT8 weights, INT32 biases, INT8 logits.
+// Lớp kết nối đầy đủ C_IN→C_OUT, trọng số INT8, bias INT32, logit INT8.
 //
-// Phase 5e — pipeline the last-cycle MAC.
+// Pha 5e — pipeline phép MAC ở chu kỳ cuối.
 //
-// Before Phase 5e the cycle when ci==C_IN-1 carried a long combinational chain
-// in ONE cycle:
-//      mult → +acc → >>>shift → clip16 → logits register
-// which Phase 5d's synthesis report identified as the worst path
-// (u_fc/fc_w[15] → u_fc/logits[*], slack −6.314 ns at 100 MHz).
+// Trước Pha 5e, chu kỳ khi ci==C_IN-1 mang một chuỗi tổ hợp dài
+// trong MỘT chu kỳ:
+//      nhân → +acc → >>>dịch → clip16 → thanh ghi logits
+// mà báo cáo tổng hợp của Pha 5d xác định là đường tệ nhất
+// (u_fc/fc_w[15] → u_fc/logits[*], slack −6.314 ns ở 100 MHz).
 //
-// Phase 5e replaces the `running`/blocking-temp structure with a clean state
-// machine that registers between the MAC accumulator, the arithmetic shift,
-// and the clip+write. The argmax pipeline (Phase 5c) is preserved as the last
-// two states.
+// Pha 5e thay cấu trúc `running`/biến-tạm-blocking bằng một máy trạng thái
+// gọn gàng, có thanh ghi giữa bộ tích lũy MAC, phép dịch số học,
+// và bước clip+ghi. Pipeline argmax (Pha 5c) được giữ lại làm hai
+// trạng thái cuối.
 //
-// States and per-state work:
+// Các trạng thái và công việc của từng trạng thái:
 //
-//   ST_IDLE   — waiting for gap_valid.
-//   ST_MAC    — one MAC cycle: acc <= acc + w[co,ci]*gap_in[ci]; advance ci.
-//               After ci==C_IN-1 the final acc value is captured here and
-//               control passes to ST_SHIFT.
-//   ST_SHIFT  — register `shifted <= acc >>> shift`. Adds 1 cycle latency.
-//   ST_CLIP   — saturate `shifted` to ±127, write logits[(co*8)+:8]. Either
-//               start the next neuron (back to ST_MAC, reload bias) or kick
-//               off the argmax stages.
-//   ST_ARG_INIT/SCAN — sequential argmax across C_OUT logits; ties keep the
-//                      lower class index.
+//   ST_IDLE   — chờ gap_valid.
+//   ST_MAC    — một chu kỳ MAC: acc <= acc + w[co,ci]*gap_in[ci]; tăng ci.
+//               Sau khi ci==C_IN-1, giá trị acc cuối được chốt tại đây và
+//               quyền điều khiển chuyển sang ST_SHIFT.
+//   ST_SHIFT  — đưa vào thanh ghi `shifted <= acc >>> shift`. Thêm 1 chu kỳ độ trễ.
+//   ST_CLIP   — bão hòa `shifted` về ±127, ghi logits[(co*8)+:8]. Hoặc
+//               bắt đầu neuron kế tiếp (quay về ST_MAC, nạp lại bias) hoặc khởi
+//               động các tầng argmax.
+//   ST_ARG_INIT/SCAN — argmax tuần tự trên C_OUT logit; khi hòa thì giữ
+//                      chỉ số lớp nhỏ hơn.
 //
-// Mathematical equivalence: the produced logits and class_out are bit-exact
-// with the prior implementation (acc is registered at the same value that
-// was previously the input to the combinational shift; shift+clip then
-// produce the same byte). The only observable difference is +2 cycles of
-// latency per neuron in the FC pipeline.
+// Tương đương về mặt toán học: logits và class_out tạo ra trùng khít từng bit
+// với cách triển khai trước (acc được ghi vào thanh ghi tại đúng giá trị mà
+// trước đây là đầu vào của phép dịch tổ hợp; dịch+clip sau đó cho ra
+// cùng một byte). Khác biệt quan sát được duy nhất là +2 chu kỳ độ trễ
+// mỗi neuron trong pipeline FC.
 module fc_layer #(
     parameter C_IN  = 16,
     parameter C_OUT = 3,
@@ -40,15 +40,15 @@ module fc_layer #(
     input  sys_clk,
     input  rst_n,
 
-    input  [(C_IN*16)-1:0] gap_in,     // INT16 from GlobalMaxPool
+    input  [(C_IN*16)-1:0] gap_in,     // INT16 từ GlobalMaxPool
     input         gap_valid,
-    input  [4:0]  shift,               // combined_shift from scale_rom[4]
+    input  [4:0]  shift,               // combined_shift từ scale_rom[4]
 
-    // Weight/bias preloaded from BSRAM by cnn_top
-    input  [(C_OUT*C_IN*8)-1:0] w,      // INT8 [C_OUT, C_IN] row-major
-    input  [(C_OUT*32)-1:0]     b,      // INT32 biases
+    // Trọng số/bias được cnn_top nạp sẵn từ BSRAM
+    input  [(C_OUT*C_IN*8)-1:0] w,      // INT8 [C_OUT, C_IN] theo thứ tự hàng (row-major)
+    input  [(C_OUT*32)-1:0]     b,      // bias INT32
 
-    output reg [(C_OUT*8)-1:0] logits,  // INT8 output
+    output reg [(C_OUT*8)-1:0] logits,  // đầu ra INT8
     output reg               logits_valid,
     output reg [CLASS_BITS-1:0] class_out          // argmax
 );
@@ -71,17 +71,17 @@ reg [$clog2(C_OUT):0] arg_idx;
 reg signed [7:0]      arg_best;
 reg [CLASS_BITS-1:0]  arg_best_idx;
 
-// Timing fix: the operand select out of the (C_OUT*C_IN*8)-bit flat weight bus
-// (768 bits at NUM_CLASSES=6) plus the activation select are registered in
-// ST_FETCH *before* the multiply in ST_MAC, instead of feeding the dynamic mux
-// straight into the DSP+adder. This makes the MAC loop 2 cycles/tap but keeps
-// the arithmetic bit-exact (same product, same accumulation order).
-reg signed [7:0]   w_sel;   // selected weight   for (co, ci)
-reg signed [15:0]  a_sel;   // selected activation for ci
+// Sửa định thời: việc chọn toán hạng từ bus trọng số phẳng (C_OUT*C_IN*8) bit
+// (768 bit khi NUM_CLASSES=6) cộng với việc chọn kích hoạt được đưa vào thanh ghi ở
+// ST_FETCH *trước* phép nhân ở ST_MAC, thay vì đưa mux động thẳng vào DSP+bộ cộng.
+// Điều này làm vòng lặp MAC mất 2 chu kỳ/tap nhưng giữ phép tính trùng khít từng bit
+// (cùng tích, cùng thứ tự tích lũy).
+reg signed [7:0]   w_sel;   // trọng số được chọn  cho (co, ci)
+reg signed [15:0]  a_sel;   // kích hoạt được chọn cho ci
 
-// Combinational MAC product from the *registered* operands. Kept as a wire so
-// the synthesizer's DSP18 inference is unambiguous; the registered accumulator
-// is `acc` (which is what gets pushed into ST_SHIFT).
+// Tích MAC tổ hợp từ các toán hạng *đã đưa vào thanh ghi*. Giữ dưới dạng wire để
+// suy luận DSP18 của bộ tổng hợp không mơ hồ; bộ tích lũy có thanh ghi
+// là `acc` (chính là thứ được đẩy sang ST_SHIFT).
 wire signed [15:0] mac_prod = $signed(w_sel) * $signed(a_sel);
 
 always @(posedge sys_clk or negedge rst_n) begin
@@ -113,18 +113,18 @@ always @(posedge sys_clk or negedge rst_n) begin
             end
 
             ST_FETCH: begin
-                // Register the selected weight + activation. This is the long
-                // 768-bit operand mux; isolating it behind w_sel/a_sel keeps the
-                // multiplier's input path short.
+                // Đưa trọng số + kích hoạt đã chọn vào thanh ghi. Đây là mux toán
+                // hạng 768 bit dài; cách ly nó sau w_sel/a_sel giúp đường đầu vào
+                // của bộ nhân ngắn lại.
                 w_sel <= $signed(w[((co*C_IN + ci)*8)+:8]);
                 a_sel <= $signed(gap_in[(ci*16)+:16]);
                 state <= ST_MAC;
             end
 
             ST_MAC: begin
-                // Accumulate one product (from the registered operands). The
-                // final accumulation is captured here (no shift/clip in the same
-                // cycle), so the worst combinational chain ends at `acc`.
+                // Tích lũy một tích (từ các toán hạng đã ghi vào thanh ghi). Lần
+                // tích lũy cuối được chốt tại đây (không dịch/clip trong cùng chu
+                // kỳ), nên chuỗi tổ hợp tệ nhất kết thúc ở `acc`.
                 acc <= acc + {{16{mac_prod[15]}}, mac_prod};
                 if (ci == C_IN - 1) begin
                     state <= ST_SHIFT;
@@ -135,15 +135,15 @@ always @(posedge sys_clk or negedge rst_n) begin
             end
 
             ST_SHIFT: begin
-                // One register stage isolates the barrel shift from the
-                // adder feeding `acc`.
+                // Một tầng thanh ghi cách ly bộ dịch barrel khỏi
+                // bộ cộng đang nuôi `acc`.
                 shifted <= acc >>> shift;
                 state   <= ST_CLIP;
             end
 
             ST_CLIP: begin
-                // Saturate to INT8 and write the neuron's logit. Then either
-                // start the next neuron or hand off to argmax.
+                // Bão hòa về INT8 và ghi logit của neuron. Sau đó hoặc bắt đầu
+                // neuron kế tiếp hoặc bàn giao cho argmax.
                 if (shifted > 32'sd127)
                     logits[(co*8)+:8] <= 8'sd127;
                 else if (shifted < -32'sd127)
